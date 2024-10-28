@@ -1,0 +1,14 @@
+- 拆分工具函数
+- DONE：线程改进程，看速度
+- DONE: 平均 加个小数点 580/580	100.0%	COST: 41min:52s	AVG: 4s/个
+
+- 当当的实现解决中文
+- 有三本没有hit，导致之前的列被挤占
+    因为没有出版社： bool(pd.na)居然是True，导致 对出版社的字符判断时出现问题
+- 128题目是空白的，定位原因
+- 出版时间没有命中的有352条，分析原因
+    - Administrative Law Cases and Materials 亚马逊/谷歌没有老版本的书，或者老版本的书在前三之外（加上除了前三之外时间一致的书）
+    - A Primer in Econometric Theory 详情页没有定位到时间，在列表页有时间
+    - A SOURCE BOOK IN INDIAN PHILOSOPHY 老书没有isbn
+        谷歌能搜出来
+        亚马逊的版本没有a
