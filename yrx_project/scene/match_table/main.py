@@ -4,22 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-def read_table(excel_config: dict) -> pd.DataFrame:
-    """
-    :param excel_config:
-    :param excel_config: [
-        {
-            "file_path": "./data/test.xlsx",
-            "sheet_name_or_index": "Sheet1",  # sheet名称或索引
-            "col_row": 2,  # 表头所在的行号（从1开始）
-        }
-    ]
-    :return:
-    """
-    df = pd.read_excel(excel_config["file_path"], sheet_name=excel_config["sheet_name_or_index"], header=excel_config["col_row"] - 1)
-    return df
-
-
 def check_match_table(main_df, match_cols_and_df: typing.List[dict]) -> typing.List[dict]:
     """根据策略进行匹配检测，如果匹配过程中待匹配表中的匹配列有重复，导致最终匹配的结果行数增加，那么找到这个列，和其对应的重复值
         :param main_df:
@@ -117,7 +101,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
             matched_indices.extend(main_df[matched_rows].index.values)
             unmatched_indices.extend(main_df[~matched_rows].index.values)
             main_df = pd.merge(main_df, match_df[catch_cols + [match_col]], how='left', left_on=main_col,
-                               right_on=match_col)
+                               right_on=match_col, suffixes=('', '_来自辅助表'))
     return main_df, np.array(matched_indices), np.array(unmatched_indices)
 
 
