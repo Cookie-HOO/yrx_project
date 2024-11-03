@@ -4,7 +4,7 @@ import pandas as pd
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget, QComboBox, QPushButton, QHBoxLayout, QTableWidget, QCheckBox, \
-    QLineEdit
+    QLineEdit, QSizePolicy
 from openpyxl.styles import PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.workbook import Workbook
@@ -263,12 +263,15 @@ class TableWidgetWrapper:
                     value = button.get("value")
                     onclick = button.get("onclick")
                     button_widget = QPushButton(value)
+                    # button_widget.setSizePolicy(QSizePolicy.Mininum, QSizePolicy.Fixed)
+                    # button_widget.setMinimumSize(100, 30)
                     this_row_values = self.get_values_by_row_index(nex_row_index)
                     button_widget.clicked.connect(lambda checked, col_index=col_index, onclick=onclick, nex_row_index=nex_row_index, this_row_values=this_row_values: onclick(nex_row_index, col_index, this_row_values))
                     button_layout.addWidget(button_widget)
 
                 button_container = QWidget()
                 button_container.setLayout(button_layout)
+                self.table_widget.setRowHeight(nex_row_index, 40)
                 self.table_widget.setCellWidget(nex_row_index, col_index, button_container)
 
     def delete_row(self, row_index):

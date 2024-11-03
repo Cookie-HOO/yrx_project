@@ -46,16 +46,20 @@ class TimeObj:
             return self._raw_time.date_str
 
     @property
+    def time_str(self):
+        if not self._raw_time:
+            return self.today.strftime(TIME_FORMATTER)
+        raise ValueError(f"{self._raw_time} is not None, cant use time_str")
+
+    @property
     def time_obj(self) -> datetime.datetime:
+        if not self._raw_time:
+            return datetime.datetime.strptime(self.time_str, TIME_FORMATTER)
         return datetime.datetime.strptime(self.date_str, DATE_FORMATTER)
 
     @property
     def full_time_str(self):
         return self.time_obj.strftime(FULL_TIME_FORMATTER)
-
-    @property
-    def time_str(self):
-        return self.time_obj.strftime(TIME_FORMATTER)
 
     def __eq__(self, other) -> bool:
         return abs((self.time_obj - other.time_obj).days) <= self.equal_buffer
@@ -91,6 +95,10 @@ class TimeObj:
     @property
     def month(self) -> int:
         return self.time_obj.month
+
+    @property
+    def last_month(self) -> int:
+        return self.time_obj.month - 1 if self.time_obj.month > 1 else 12
 
     @property
     def day(self) -> int:

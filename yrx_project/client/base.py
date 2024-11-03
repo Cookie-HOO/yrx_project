@@ -295,10 +295,11 @@ class WindowWithMainWorker(BaseWindow):
         self.modal("info", title="Finished", msg=f"执行完成,共用时{self.start_time.secsTo(QTime.currentTime())}秒")
 
     def set_status_failed(self):
-        elapsed_time = self.start_time.secsTo(QTime.currentTime())
-        self.statusBar.showMessage(f"Failed: Last for: {elapsed_time} seconds")
-        self.timer.stop()
-        self.__status = "failed"
+        if self.start_time:
+            elapsed_time = self.start_time.secsTo(QTime.currentTime())
+            self.statusBar.showMessage(f"Failed: Last for: {elapsed_time} seconds")
+            self.timer.stop()
+            self.__status = "failed"
 
     ############  生命周期: 直接调用, 或者是worker发送事件的消费者 ############
     # 生命周期: worker任务启动

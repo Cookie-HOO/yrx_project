@@ -1,5 +1,6 @@
 import time
 
+import pandas as pd
 from PyQt5 import uic
 
 from yrx_project.client.base import WindowWithMainWorker
@@ -65,9 +66,13 @@ class MyTableMatchClient(WindowWithMainWorker):
         self.download_result_button.clicked.connect(self.download_result)
 
     def add_main_table(self):
+        if len(self.main_tables_wrapper.get_data_as_df()) > 0:
+            return self.modal(level="warn", msg="目前仅支持一张主表")
         self.add_table("main")
 
     def add_help_table(self):
+        if len(self.help_tables_wrapper.get_data_as_df()) > 0:
+            return self.modal(level="warn", msg="目前仅支持一张辅助表")
         self.add_table("help")
 
     def add_table(self, table_type):
@@ -160,7 +165,10 @@ class MyTableMatchClient(WindowWithMainWorker):
             path = self.help_table_path
         sheet_name = table_wrapper.get_cell_value(row_index, 1)  # 工作表
         row_num_for_column = table_wrapper.get_cell_value(row_index, 2)  # 列所在行
-        df = pd.read_excel(path, sheet_name=sheet_name, header=int(row_num_for_column) - 1)
+        try:
+            df = pd.read_excel(path, sheet_name=sheet_name, header=int(row_num_for_column) - 1)
+        except ValueError as e:
+            df = pd.DataFrame({"error": [f"超出行数: {str(e)}"]})
         return df
 
     def add_condition(self):
@@ -169,7 +177,9 @@ class MyTableMatchClient(WindowWithMainWorker):
         :return:
         """
         if self.main_table_path is None or self.help_table_path is None:
-            self.modal(level="error", msg="请先上传主表或辅助表")
+            return self.modal(level="error", msg="请先上传主表或辅助表")
+        if len(self.conditions_table_wrapper.get_data_as_df()) > 0:
+            return self.modal(level="warn", msg="目前仅支持一个条件")
         df_main = self.get_df_by_row_index(0, "main")
         df_help = self.get_df_by_row_index(0, "help")
 
@@ -221,7 +231,7 @@ class MyTableMatchClient(WindowWithMainWorker):
             }],
         }])
         if duplicate_info:
-            dup_values = ", ".join([i.get("duplicate_cols", {}).get("cell_values", [])[0] for i in duplicate_info])
+            dup_values = ", ".join([str(i.get("duplicate_cols", {}).get("cell_values", [])[0]) for i in duplicate_info])
             msg = "列：{}\t重复值{}".format(help_col, dup_values)
             self.modal("warn", f"经过检查辅助表存在重复: \n{msg}")
         else:

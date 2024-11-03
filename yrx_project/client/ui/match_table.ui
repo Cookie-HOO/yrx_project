@@ -273,7 +273,7 @@
       </column>
       <column>
        <property name="text">
-        <string>从辅助表增加列</string>
+        <string>增加列到主表（从辅助表）</string>
        </property>
       </column>
       <column>

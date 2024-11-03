@@ -3,6 +3,8 @@ import typing
 import numpy as np
 import pandas as pd
 
+from yrx_project.utils.iter_util import dedup_list
+
 
 def check_match_table(main_df, match_cols_and_df: typing.List[dict]) -> typing.List[dict]:
     """根据策略进行匹配检测，如果匹配过程中待匹配表中的匹配列有重复，导致最终匹配的结果行数增加，那么找到这个列，和其对应的重复值
@@ -92,7 +94,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
         catch_cols = match_dict['catch_cols']
 
         match_col_names = [i['match_col'] for i in match_cols]
-        match_df = match_df.drop_duplicates(subset=match_col_names, keep='first')
+        match_df = match_df.drop_duplicates(subset=match_col_names, keep=match_dict["match_policy"])
 
         for col_dict in match_cols:
             main_col = col_dict['main_col']
@@ -100,7 +102,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
             matched_rows = main_df[main_col].isin(match_df[match_col])
             matched_indices.extend(main_df[matched_rows].index.values)
             unmatched_indices.extend(main_df[~matched_rows].index.values)
-            main_df = pd.merge(main_df, match_df[catch_cols + [match_col]], how='left', left_on=main_col,
+            main_df = pd.merge(main_df, match_df[dedup_list(catch_cols + [match_col])], how='left', left_on=main_col,
                                right_on=match_col, suffixes=('', '_来自辅助表'))
     return main_df, np.array(matched_indices), np.array(unmatched_indices)
 
