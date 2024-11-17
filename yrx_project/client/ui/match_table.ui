@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>994</width>
-    <height>549</height>
+    <width>1355</width>
+    <height>619</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,14 +22,64 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <layout class="QHBoxLayout" name="horizontalLayout_8">
       <item>
-       <widget class="QPushButton" name="help_button">
+       <widget class="QPushButton" name="help_info_button">
         <property name="text">
-         <string>❓</string>
+         <string>❓场景说明</string>
         </property>
        </widget>
       </item>
+      <item>
+       <spacer name="horizontalSpacer_7">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_6">
+        <property name="sizeIncrement">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>多表匹配场景</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_8">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="release_info_button">
+        <property name="text">
+         <string>💡应用更新信息</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_6">
       <item>
        <widget class="QLabel" name="label_5">
         <property name="text">
@@ -49,6 +99,13 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton">
+        <property name="text">
+         <string>❓第一步的帮助信息</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
@@ -102,7 +159,7 @@
            <enum>QAbstractItemView::ScrollPerItem</enum>
           </property>
           <property name="columnCount">
-           <number>4</number>
+           <number>5</number>
           </property>
           <attribute name="verticalHeaderVisible">
            <bool>true</bool>
@@ -125,6 +182,11 @@
           <column>
            <property name="text">
             <string>操作按钮</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>__表路径</string>
            </property>
           </column>
          </widget>
@@ -179,7 +241,7 @@
            <enum>QAbstractItemView::ScrollPerItem</enum>
           </property>
           <property name="columnCount">
-           <number>4</number>
+           <number>5</number>
           </property>
           <attribute name="verticalHeaderVisible">
            <bool>true</bool>
@@ -204,6 +266,11 @@
             <string>操作按钮</string>
            </property>
           </column>
+          <column>
+           <property name="text">
+            <string>__表路径</string>
+           </property>
+          </column>
          </widget>
         </item>
        </layout>
@@ -222,7 +289,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>第二步 ：设置匹配条件</string>
+         <string>第二步 ：设置匹配条件与操作</string>
         </property>
        </widget>
       </item>
@@ -238,6 +305,13 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="add_condition_help_info_button">
+        <property name="text">
+         <string>❓第二步的帮助信息</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
@@ -256,7 +330,7 @@
        <enum>QAbstractItemView::ScrollPerItem</enum>
       </property>
       <property name="columnCount">
-       <number>5</number>
+       <number>8</number>
       </property>
       <attribute name="verticalHeaderVisible">
        <bool>true</bool>
@@ -268,17 +342,53 @@
       </column>
       <column>
        <property name="text">
+        <string>辅助表名</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
         <string>辅助表匹配列</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>增加列到主表（从辅助表）</string>
+        <string>列：从辅助表增加</string>
        </property>
       </column>
       <column>
        <property name="text">
-        <string>重复值策略</string>
+        <string>列：匹配附加信息（文字）可编辑</string>
+       </property>
+       <property name="background">
+        <color>
+         <red>207</red>
+         <green>240</green>
+         <blue>198</blue>
+        </color>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>列：匹配附加信息（行数）</string>
+       </property>
+       <property name="background">
+        <color>
+         <red>207</red>
+         <green>240</green>
+         <blue>196</blue>
+        </color>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>删除满足条件的行</string>
+       </property>
+       <property name="background">
+        <color>
+         <red>242</red>
+         <green>195</green>
+         <blue>189</blue>
+        </color>
        </property>
       </column>
       <column>
@@ -300,7 +410,7 @@
       <item>
        <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>第三步 ：执行</string>
+         <string>第三步 ：执行与下载</string>
         </property>
        </widget>
       </item>
@@ -318,16 +428,57 @@
        </spacer>
       </item>
       <item>
+       <widget class="QPushButton" name="run_help_info_button">
+        <property name="text">
+         <string>❓第三步的帮助信息</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_7">
+      <item>
        <widget class="QLabel" name="result_detail_text">
         <property name="text">
-         <string> 🚫执行耗时：--毫秒；匹配：--行（--%）</string>
+         <string> 🚫执行耗时：--毫秒；共匹配：--行（--%）</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="result_detail_info_button">
+        <property name="text">
+         <string>💡各辅助表统计</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_6">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="include_detail_checkbox">
+        <property name="text">
+         <string>下载包括匹配附加信息</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="download_result_button">
         <property name="text">
-         <string>下载结果</string>
+         <string>下载结果📄</string>
         </property>
        </widget>
       </item>

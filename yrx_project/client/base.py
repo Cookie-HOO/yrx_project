@@ -10,7 +10,7 @@ from PyQt5.QtGui import QPixmap
 
 from yrx_project.client.const import *
 from yrx_project.client.utils.exception import ClientWorkerException
-from yrx_project.client.utils.message_widget import TipWidgetWithCountDown
+from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox
 from yrx_project.utils.file import get_file_name_without_extension, copy_file, get_file_name_with_extension, make_zip
 from yrx_project.utils.logger import logger_sys_error
 from yrx_project.utils.time_obj import TimeObj
@@ -113,7 +113,10 @@ class BaseWindow(QMainWindow):
         if level == "info":
             if done:
                 self.done = True
-            QMessageBox.information(self, title, msg)
+            if kwargs.get("width") and kwargs.get("height"):
+                MyQMessageBox(title=title, msg=msg, width=kwargs.get("width"), height=kwargs.get("height"))
+            else:
+                QMessageBox.information(self, title, msg)
         elif level == "warn":
             if done:
                 self.done = True
@@ -124,8 +127,12 @@ class BaseWindow(QMainWindow):
                 self.done = True
             QMessageBox.critical(self, title, msg)
         elif level == "check_yes":  # 只要yes（点击No或者关闭，reply都是一个值）
+            default_yes_or_false = kwargs.get("default")
+            default = QMessageBox.No
+            if default_yes_or_false.lower() == "yes":
+                default = QMessageBox.Yes
             reply = QMessageBox.question(
-                self, title, msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                self, title, msg, QMessageBox.Yes | QMessageBox.No, default)
             return reply == QMessageBox.Yes
         elif level == "tip":
             count_down = kwargs.get("count_down", 3)

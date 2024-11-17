@@ -13,6 +13,7 @@ COLOR_WHITE = QColor(255, 255, 255)
 COLOR_RED = QColor(245, 184, 184)
 COLOR_GREEN = QColor(199, 242, 174)
 COLOR_YELLOW = QColor(250, 243, 160)
+COLOR_BLUE = QColor(206, 220, 245)
 
 # color emoji
 COLOR_STR_RED = "🟥"

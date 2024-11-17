@@ -9,6 +9,7 @@ from openpyxl.styles import PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.workbook import Workbook
 
+from yrx_project.client.utils.multi_selector import MultiSelectComboBox
 from yrx_project.utils.color_util import rgb_to_hex
 
 """
@@ -24,10 +25,19 @@ CELL_WIDGET_FUNC_TYPE = typing.Callable[[pd.DataFrame, int, int], typing.Union[N
 class TableWidgetWrapper:
     def __init__(self, table_widget=None, del_rows_button=False, add_rows_button=False):
         self.table_widget = table_widget or QTableWidget()
-
+        # 隐藏指定列
+        self.__hidden_column()
+        # 添加按钮
         new_table = self.__add_buttons(add_rows_button, del_rows_button)
         if new_table is not None:
             self.table_widget = new_table
+
+    def __hidden_column(self):
+        for i in range(self.table_widget.columnCount()):
+            header = self.table_widget.horizontalHeaderItem(i)
+            if header is not None:
+                if header.text().startswith("__"):
+                    self.table_widget.setColumnHidden(i, True)
 
     def __add_buttons(self, add_rows_button, del_rows_button):
         if not add_rows_button and not del_rows_button:
@@ -79,6 +89,10 @@ class TableWidgetWrapper:
         for index in sorted(selected_rows, reverse=True):
             self.table_widget.removeRow(index.row())
 
+    def set_col_width(self, col_index: int, width: int):
+        self.table_widget.setColumnWidth(col_index, width)
+        return self
+
     def get_cell_value(self, row: int, column: int) -> typing.Optional[str]:
         # 尝试获取QTableWidgetItem（普通文本）
         item = self.table_widget.item(row, column)
@@ -92,6 +106,9 @@ class TableWidgetWrapper:
 
         elif isinstance(widget, QCheckBox):  # 全局单选框
             return widget.isChecked()
+
+        elif isinstance(widget, MultiSelectComboBox):
+            return widget.selected_values()  # 多选的值
 
         # 如果既不是QTableWidgetItem也不是QComboBox，返回None
         return None
@@ -126,6 +143,7 @@ class TableWidgetWrapper:
         cols_to_drop = [i for i in df.columns if str(i).startswith('__')]
         # df删除 no_use_cols 列
         fill_df = df.drop(cols_to_drop, axis=1)
+        fill_df.fillna('', inplace=True)
         # 将dataframe的数据写入QTableWidget
         self.table_widget.setRowCount(fill_df.shape[0])
         self.table_widget.setColumnCount(fill_df.shape[1])
@@ -239,19 +257,45 @@ class TableWidgetWrapper:
         self.table_widget.setRowCount(nex_row_index+1)
         for col_index, cell in enumerate(row):
             cell_type = cell.get("type")
+            cell_options = cell.get("options", {})
             if cell_type == "readonly_text":
                 item = QTableWidgetItem(str(cell.get("value")))
                 item.setFlags(Qt.ItemIsEnabled)
+                item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
                 self.table_widget.setItem(nex_row_index, col_index, item)
             elif cell_type == "editable_text":
-                item = QTableWidgetItem(cell.get("value"))
+                item = QTableWidgetItem(str(cell.get("value")))
                 item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)
                 self.table_widget.setItem(nex_row_index, col_index, item)
-            elif cell_type == "dropdown":  # todo 多选
-                combo_box = QComboBox()
-                combo_box.addItems(cell.get("values"))
-                combo_box.setCurrentIndex(cell.get("cur_index", 0))
-                self.table_widget.setCellWidget(nex_row_index, col_index, combo_box)
+            elif cell_type == "dropdown":
+                values = cell.get("values")
+                font_colors = cell_options.get("font_colors") or cell_options.get("colors")
+                bg_colors = cell_options.get("bg_colors")
+                if cell_options.get("multi"):
+                    combo_multi_box = MultiSelectComboBox(values, cur_index=cell.get("cur_index", 0), font_colors=font_colors, bg_colors=bg_colors, first_as_none=cell_options.get("first_as_none"))
+                    self.table_widget.setCellWidget(nex_row_index, col_index, combo_multi_box)
+                else:
+                    combo_box = QComboBox()
+                    combo_box.addItems(values)
+                    combo_box.setCurrentIndex(cell.get("cur_index", 0))
+                    self.table_widget.setCellWidget(nex_row_index, col_index, combo_box)
+                    # 尝试字体添加颜色
+                    if font_colors:
+                        for i in range(len(values)):
+                            color = font_colors[i]
+                            if color:
+                                combo_box.setItemData(i, color, role=Qt.ForegroundRole)
+                    # 尝试添加背景颜色
+                    if bg_colors:
+                        for i in range(len(values)):
+                            color = bg_colors[i]
+                            if color:
+                                combo_box.setItemData(i, color, role=Qt.BackgroundRole)
+            elif cell_type == "checkbox":
+                check_box = QCheckBox()
+                check_box.setChecked(cell.get("value", False))
+                # check_box.stateChanged.connect(lambda state, nex_row_index=nex_row_index,col_index=col_index: self.__global_radio_action(state, cur_row_index=nex_row_index, cur_col_index=col_index))
+                self.table_widget.setCellWidget(nex_row_index, col_index, check_box)
             elif cell_type == "global_radio":
                 check_box = QCheckBox()
                 check_box.setChecked(cell.get("value", False))
@@ -266,7 +310,9 @@ class TableWidgetWrapper:
                     # button_widget.setSizePolicy(QSizePolicy.Mininum, QSizePolicy.Fixed)
                     # button_widget.setMinimumSize(100, 30)
                     this_row_values = self.get_values_by_row_index(nex_row_index)
+                    button_widget.onclick = onclick
                     button_widget.clicked.connect(lambda checked, col_index=col_index, onclick=onclick, nex_row_index=nex_row_index, this_row_values=this_row_values: onclick(nex_row_index, col_index, this_row_values))
+                    # button_widget.clicked.connect(lambda checked=None, onclick=onclick: onclick(nex_row_index, col_index, this_row_values))
                     button_layout.addWidget(button_widget)
 
                 button_container = QWidget()
@@ -275,7 +321,25 @@ class TableWidgetWrapper:
                 self.table_widget.setCellWidget(nex_row_index, col_index, button_container)
 
     def delete_row(self, row_index):
+        # 删除行
         self.table_widget.removeRow(row_index)
+        # 重新绑定所有按钮的点击事件：因为删除行后，行数发生变化，导致按钮的点击事件的参数发生变化
+        for i in range(self.table_widget.rowCount()):
+            this_row_values = self.get_values_by_row_index(i)
+            for j in range(self.table_widget.columnCount()):
+                # 获取按钮
+                cell_widget = self.table_widget.cellWidget(i, j)
+                if cell_widget is not None:
+                    buttons = cell_widget.findChildren(QPushButton)
+                    if buttons:
+                        for button in buttons:
+                            # 获取保存的点击操作
+                            onclick = button.onclick
+                            # 重新绑定点击事件
+                            button.clicked.disconnect()
+                            button.clicked.connect(lambda checked, col_index=j, onclick=onclick, nex_row_index=i,
+                                                          this_row_values=this_row_values: onclick(nex_row_index, col_index,
+                                                                                               this_row_values))
 
     def __global_radio_action(self, state, **kwargs):
         cur_row_index = kwargs.get("cur_row_index")
@@ -293,10 +357,13 @@ class TableWidgetWrapper:
                 labels.append(item.text())
         return labels
 
+    def row_length(self):
+        return self.table_widget.rowCount()
+
     def get_values_by_row_index(self, row_index) -> dict:
         values = {}
         for col_index, column_name in enumerate(self.get_columns()):
-            widget = self.table_widget.cellWidget(row_index, col_index)
+            widget = self.table_widget.item(row_index, col_index) or self.table_widget.cellWidget(row_index, col_index)
             if isinstance(widget, QTableWidgetItem):
                 values[column_name] = widget.text()
             elif isinstance(widget, QComboBox):  # 下拉框
@@ -307,13 +374,17 @@ class TableWidgetWrapper:
                 values[column_name] = None
         return values
 
-    def save_with_color(self, path):
+    def save_with_color(self, path, include_cols=None, exclude_cols=None):
         # 创建一个 Workbook
         wb = Workbook()
         ws = wb.active
 
         # 将 DataFrame 转换为 rows
         df, colors = self.get_data_as_rows_and_color()
+        if include_cols:
+            df = df[include_cols]
+        if exclude_cols:
+            df = df.drop(exclude_cols, axis=1)
         rows = dataframe_to_rows(df, index=False, header=True)
 
         for i, row in enumerate(rows, 1):
