@@ -163,6 +163,7 @@ class BaseWindow(QMainWindow):
         elif isinstance(table_widget_or_wrapper_or_df, pd.DataFrame):
             table_widget = TableWidgetWrapper().fill_data_with_color(table_widget_or_wrapper_or_df).table_widget
         dialog = QDialog()
+        dialog.setWindowTitle("表格预览")
         layout = QVBoxLayout(dialog)
         layout.addWidget(table_widget)
         dialog.setLayout(layout)

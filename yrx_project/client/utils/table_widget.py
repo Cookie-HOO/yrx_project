@@ -39,7 +39,7 @@ def drag_move_event(event):
 
 
 def drag_drop_event(event, func: typing.Callable[[typing.List[str]], typing.Any]):
-    file_names = [url.path() for url in event.mimeData().urls()]
+    file_names = [url.toLocalFile() for url in event.mimeData().urls()]
     func(file_names)
 
 

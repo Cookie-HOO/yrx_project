@@ -141,6 +141,7 @@ class TipWidgetWithLoading(QDialog):
 
     def __init__(self, titles=None):
         super().__init__()
+        self.setWindowTitle("加载中...")
         self.titles = titles or []  # 多个title轮播
         self.titles_pointer = 0
 
@@ -209,6 +210,7 @@ class TipWidgetWithLoading(QDialog):
             title_index = self.titles_pointer % len(self.titles)
             title = self.titles[title_index]
             self.title_label.setText(title)
+            self.setWindowTitle(title)
             self.titles_pointer += 1
 
     def set_titles(self, titles):

@@ -82,6 +82,7 @@ class Worker(BaseWorker):
     custom_after_run_signal = pyqtSignal(dict)  # 自定义信号
     custom_view_result_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
+    custom_preview_df_signal = pyqtSignal(dict)  # 自定义信号
 
     def __init__(self):
         super().__init__()
@@ -124,6 +125,19 @@ class Worker(BaseWorker):
                 "file_names": file_names,
                 "status_msg": status_msg,
                 "table_type": table_type,
+            })
+        elif stage == "preview_df":
+            self.refresh_signal.emit(
+                f"预览表格中..."
+            )
+            start_preview_df_time = time.time()
+
+            df_config = self.get_param("df_config")
+            dfs = read_excel_file_with_multiprocessing([df_config])
+            status_msg = f"✅预览结果成功，共耗时：{round(time.time() - start_preview_df_time, 2)}s："
+            self.custom_preview_df_signal.emit({
+                "df": dfs[0],
+                "status_msg": status_msg
             })
         elif stage == "add_condition":  # 任务处在上传添加条件的阶段
             self.refresh_signal.emit(
@@ -281,9 +295,7 @@ class Worker(BaseWorker):
             odd_cols_index = self.get_param("odd_cols_index")
             even_cols_index = self.get_param("even_cols_index")
             overall_cols_index = self.get_param("overall_cols_index")
-
-
-
+            match_for_main_col = self.get_param("match_for_main_col")
 
             table_widget_container.fill_data_with_color(
                 matched_df,
@@ -293,14 +305,6 @@ class Worker(BaseWorker):
                 )
             )
 
-
-            table_widget_container.fill_data_with_color(
-                matched_df,
-                cell_style_func=lambda df, row_index, col_index, odd=odd_cols_index, even=even_cols_index,
-                                       last_two=overall_cols_index: fill_color_v3(
-                    odd_index=odd, even_index=even, last_index=last_two, col_index=col_index
-                )
-            )
             duration = round((time.time() - start_view_result), 2)
             status_msg = f"✅生成放大结果成功，共耗时：{duration}秒"
             self.custom_view_result_signal.emit({
@@ -505,19 +509,22 @@ v1.0.0: 实现基础版本的表匹配功能
 - 匹配条件
 - 下载结果
 
-v1.0.1: bug修复
-- 修复可能出现的单元格背景是黑色的问题
+v1.0.1
+- [修复]可能出现的单元格背景是黑色的问题
 
-v1.0.2: 功能更新
+v1.0.2: 测试版
 1. 支持多辅助表，多匹配条件
 2. 支持设置和下载匹配附加信息
 3. 增加说明按钮
 4. 从辅助表携带列支持多列
-5. 增加重置功能
-6. 增加状态栏显示耗时，以及错误原因
-7. 所有任务异步执行，并添加loading动画
-8. 下载的文件用背景色区分多辅助表
-9. 下载完成后，新增：打开所在文件夹、打开文件按钮
+5. 下载的文件用背景色区分多辅助表
+
+v1.0.3
+1. 增加全局重置功能
+2. 增加状态栏显示耗时，以及错误原因
+3. 所有任务异步执行，并添加loading动画
+4. 下载完成后，新增：打开所在文件夹、打开文件按钮
+[修复] 上传xls文件可能的报错
 """
 
     # 第一步：上传文件的帮助信息
@@ -609,6 +616,7 @@ v1.0.2: 功能更新
             return
         self.add_table(file_names, "help")
 
+    @set_error_wrapper
     def reset_all(self):
         self.main_tables_wrapper.clear()
         self.help_tables_wrapper.clear()
@@ -621,6 +629,7 @@ v1.0.2: 功能更新
         self.result_detail_text.setText("共匹配：--行（--%）")
 
     # 上传文件的核心函数（调用worker）
+    @set_error_wrapper
     def add_table(self, file_names, table_type):
         if isinstance(file_names, str):
             file_names = [file_names]
@@ -646,6 +655,7 @@ v1.0.2: 功能更新
         self.tip_loading.set_titles(["上传文件.", "上传文件..", "上传文件..."]).show()
 
     # 上传文件的后处理
+    @set_error_wrapper
     def custom_after_upload(self, upload_result):
         file_names = upload_result.get("file_names")
         base_name_list = upload_result.get("base_name_list")
@@ -693,9 +703,6 @@ v1.0.2: 功能更新
         self.tip_loading.hide()
         self.set_status_text(status_msg)
 
-    def my(self):
-        print(123)
-
     @set_error_wrapper
     def delete_table_row(self, row_index, table_type, *args, **kwargs):
         if table_type == "main":
@@ -716,14 +723,30 @@ v1.0.2: 功能更新
                     self.conditions_table_wrapper.delete_row(row_index_in_condition[0])
                     self.help_tables_wrapper.delete_row(row_index)
 
+    # 预览上传文件（调用worker）
     @set_error_wrapper
     def preview_table_button(self, row_index, table_type, *args, **kwargs):
-        df = self.get_df_by_row_index(row_index, table_type, nrows=3)  # len(df) 最大为3
+        # 读取文件进行上传
+        df_config = self.get_df_config_by_row_index(row_index, table_type)
+        df_config["nrows"] = 3
+        params = {
+            "stage": "preview_df",  # 第一阶段
+            "df_config": df_config,  # 上传的所有文件名
+        }
+        self.worker.add_params(params).start()
+        self.tip_loading.set_titles(["预览表格.", "预览表格..", "预览表格..."]).show()
+
+    @set_error_wrapper
+    def custom_preview_df(self, preview_result):
+        df = preview_result.get("df")
+        status_msg = preview_result.get("status_msg")
         if len(df) >= 3:
             extra = [f'...省略剩余行' for _ in range(df.shape[1])]
             new_row = pd.Series(extra, index=df.columns)
             df = df.append(new_row, ignore_index=True)
-        self.table_modal(df)
+        self.tip_loading.hide()
+        self.set_status_text(status_msg)
+        self.table_modal(df, size=(400, 200))
 
     @set_error_wrapper
     def get_df_by_row_index(self, row_index, table_type, nrows=None, *args, **kwargs):
@@ -771,6 +794,7 @@ v1.0.2: 功能更新
         self.worker.add_params(params).start()
         self.tip_loading.set_titles(["添加条件.", "添加条件..", "添加条件..."]).show()
 
+    @set_error_wrapper
     def custom_after_add_condition(self, add_condition_result):
         status_msg = add_condition_result.get("status_msg")
         df_main_columns = add_condition_result.get("df_main_columns")
@@ -816,9 +840,6 @@ v1.0.2: 功能更新
                 "type": "button_group",
                 "values": [
                     {
-                        "value": "检查",
-                        "onclick": lambda row_index, col_index, row: self.check_table_condition(row_index, row),
-                    }, {
                         "value": "删除",
                         "onclick": lambda row_index, col_index, row: self.conditions_table_wrapper.delete_row(
                             row_index),
@@ -873,6 +894,7 @@ v1.0.2: 功能更新
         self.worker.add_params(params).start()
         self.tip_loading.set_titles(["表匹配.", "表匹配..", "表匹配..."]).show()
 
+    @set_error_wrapper
     def custom_after_run(self, run_result):
         tip = run_result.get("tip")
         status_msg = run_result.get("status_msg")
@@ -908,7 +930,7 @@ v1.0.2: 功能更新
                 "未匹配行数": f"{len(v.get('unmatch_index_list'))}（{round(unmatch_percent * 100, 2)}%）",
                 "需要删除行数": f"{len(v.get('delete_index_list'))}（{round(delete_percent * 100, 2)}%）",
             })
-        self.table_modal(pd.DataFrame(data))
+        self.table_modal(pd.DataFrame(data), size=(500, 200))
 
     @set_error_wrapper
     def view_result(self, *args, **kwargs):
@@ -928,6 +950,7 @@ v1.0.2: 功能更新
         self.worker.add_params(params).start()
         self.tip_loading.set_titles(["生成预览结果.", "生成预览结果..", "生成预览结果..."]).show()
 
+    @set_error_wrapper
     def custom_view_result(self, view_result):
         table_widget_wrapper = view_result.get("table_widget_wrapper")
         status_msg = view_result.get("status_msg")
@@ -957,6 +980,7 @@ v1.0.2: 功能更新
         self.worker.add_params(params).start()
         self.tip_loading.set_titles(["合成Excel文件并下载.", "合成Excel文件并下载..", "合成Excel文件并下载..."]).show()
 
+    @set_error_wrapper
     def custom_after_download(self, after_download_result):
         status_msg = after_download_result.get("status_msg")
         duration = after_download_result.get("duration")

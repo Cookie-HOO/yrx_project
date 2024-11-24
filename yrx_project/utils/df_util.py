@@ -7,7 +7,7 @@ import pandas as pd
 import xlrd
 from openpyxl.reader.excel import load_workbook
 
-d = Manager().dict()  # 创建一个可以在多个进程之间共享的字典
+# d = Manager().dict()  # 创建一个可以在多个进程之间共享的字典
 
 
 def is_empty(value):
@@ -46,24 +46,24 @@ def read_excel_file(path, sheet_name, row_num_for_column, nrows) -> pd.DataFrame
         "nrows": 1,
     }]
     """
-    if str((path, sheet_name, row_num_for_column, nrows)) in d:
-        return d[str(("df", path, sheet_name, row_num_for_column, nrows))]
+    # if str((path, sheet_name, row_num_for_column, nrows)) in d:
+    #     return d[str(("df", path, sheet_name, row_num_for_column, nrows))]
     # path = file_config.get("path")
     # sheet_name = file_config.get("sheet_name")
     # header = int(file_config.get("row_num_for_column")) - 1
     # nrows = file_config.get("nrows")
     df = pd.read_excel(path, sheet_name=sheet_name, header=int(row_num_for_column) - 1, nrows=nrows)
-    d[str(("df", path, sheet_name, row_num_for_column, nrows))] = df
+    # d[str(("df", path, sheet_name, row_num_for_column, nrows))] = df
     return df
 
 
 @lru_cache(maxsize=None)
 def read_excel_sheets(path, sheet_name, row_num_for_column, nrows) -> typing.List[str]:
     # path = file_config.get("path")
-    if str(("sheets", path, sheet_name, row_num_for_column, nrows)) in d:
-        return d[str(("sheets", path, sheet_name, row_num_for_column, nrows))]
+    # if str(("sheets", path, sheet_name, row_num_for_column, nrows)) in d:
+    #     return d[str(("sheets", path, sheet_name, row_num_for_column, nrows))]
     sheet_names = pd.ExcelFile(path).sheet_names
-    d[str(("sheets", path, sheet_name, row_num_for_column, nrows))] = sheet_names
+    # d[str(("sheets", path, sheet_name, row_num_for_column, nrows))] = sheet_names
     return sheet_names
 
 
@@ -72,8 +72,8 @@ def read_excel_columns(path, sheet_name, row_num_for_column, nrows) -> typing.Li
     # path = file_config.get("path")
     # sheet_name = file_config.get("sheet_name")
     # row_num_for_column = file_config.get("row_num_for_column")
-    if str(("columns", path, sheet_name, row_num_for_column, nrows)) in d:
-        return d[str(("columns", path, sheet_name, row_num_for_column, nrows))]
+    # if str(("columns", path, sheet_name, row_num_for_column, nrows)) in d:
+    #     return d[str(("columns", path, sheet_name, row_num_for_column, nrows))]
     if path.endswith(".xlsx"):
         # 加载工作簿
         wb = load_workbook(filename=path, read_only=True)
@@ -88,7 +88,7 @@ def read_excel_columns(path, sheet_name, row_num_for_column, nrows) -> typing.Li
         sheet = wb.sheet_by_name(sheet_name)
         # 读取特定的行
         row_data = sheet.row_values(int(row_num_for_column) - 1)
-    d[str(("columns", path, sheet_name, row_num_for_column, nrows))] = row_data
+    # d[str(("columns", path, sheet_name, row_num_for_column, nrows))] = row_data
     return row_data
 
 
