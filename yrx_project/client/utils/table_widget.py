@@ -1,6 +1,7 @@
 import typing
 
 import pandas as pd
+import xlsxwriter
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget, QComboBox, QPushButton, QHBoxLayout, QTableWidget, QCheckBox, \
@@ -22,8 +23,28 @@ CELL_STYLE_FUNC_TYPE = typing.Callable[[pd.DataFrame, int, int], QColor]
 CELL_WIDGET_FUNC_TYPE = typing.Callable[[pd.DataFrame, int, int], typing.Union[None, QComboBox]]
 
 
+def drag_enter_event(event):
+    if event.mimeData().hasUrls():
+        event.accept()
+    else:
+        event.ignore()
+
+
+def drag_move_event(event):
+    if event.mimeData().hasUrls():
+        event.setDropAction(Qt.CopyAction)
+        event.accept()
+    else:
+        event.ignore()
+
+
+def drag_drop_event(event, func: typing.Callable[[typing.List[str]], typing.Any]):
+    file_names = [url.path() for url in event.mimeData().urls()]
+    func(file_names)
+
+
 class TableWidgetWrapper:
-    def __init__(self, table_widget=None, del_rows_button=False, add_rows_button=False):
+    def __init__(self, table_widget=None, del_rows_button=False, add_rows_button=False, drag_func=None):
         self.table_widget = table_widget or QTableWidget()
         # 隐藏指定列
         self.__hidden_column()
@@ -31,6 +52,12 @@ class TableWidgetWrapper:
         new_table = self.__add_buttons(add_rows_button, del_rows_button)
         if new_table is not None:
             self.table_widget = new_table
+        # 支持将文件拖拽到这个table中
+        if drag_func is not None:
+            self.table_widget.setAcceptDrops(True)
+            self.table_widget.dragEnterEvent = drag_enter_event
+            self.table_widget.dropEvent = lambda event: drag_drop_event(event, drag_func)
+            self.table_widget.dragMoveEvent = drag_move_event
 
     def __hidden_column(self):
         for i in range(self.table_widget.columnCount()):
@@ -141,29 +168,31 @@ class TableWidgetWrapper:
             cell_widget_func: typing.Callable[[pd.DataFrame, int, int], QWidget] = None,
     ):
         cols_to_drop = [i for i in df.columns if str(i).startswith('__')]
-        # df删除 no_use_cols 列
         fill_df = df.drop(cols_to_drop, axis=1)
         fill_df.fillna('', inplace=True)
-        # 将dataframe的数据写入QTableWidget
-        self.table_widget.setRowCount(fill_df.shape[0])
-        self.table_widget.setColumnCount(fill_df.shape[1])
+        fill_data = fill_df.values.tolist()
+
+        self.table_widget.setRowCount(len(fill_data))
+        self.table_widget.setColumnCount(len(fill_data[0]) if fill_data else 0)
         self.table_widget.setHorizontalHeaderLabels([str(i) for i in fill_df.columns])
-        for i in range(fill_df.shape[0]):
-            for j in range(fill_df.shape[1]):
-                item = QTableWidgetItem(str(fill_df.iloc[i, j]))
+
+        self.table_widget.setUpdatesEnabled(False)
+        for i, row in enumerate(fill_data):
+            for j, value in enumerate(row):
+                item = QTableWidgetItem(str(value))
                 if cell_widget_func is not None:
                     item = cell_widget_func(fill_df, i, j) or item
 
-                # 普通文本对象
                 if isinstance(item, QTableWidgetItem):
                     if cell_style_func:
                         color = cell_style_func(fill_df, i, j)
                         if color:
-                            item.setBackground(QBrush(color))  # 设置背景颜色
+                            item.setBackground(QBrush(color))
                     self.table_widget.setItem(i, j, item)
-                # 复杂组件对象：下拉选项
                 elif isinstance(item, QComboBox):
                     self.table_widget.setCellWidget(i, j, item)
+        self.table_widget.setUpdatesEnabled(True)
+
         return self
 
     def get_data_as_df(self) -> pd.DataFrame:
@@ -207,9 +236,8 @@ class TableWidgetWrapper:
         return df, colors
 
     def clear(self):
-        """全部清空"""
+        """全部清空，只保留表头"""
         self.table_widget.setRowCount(0)
-        self.table_widget.setColumnCount(0)
 
     def clear_content(self):
         """清空内容，保留行列"""
@@ -334,11 +362,13 @@ class TableWidgetWrapper:
                     if buttons:
                         for button in buttons:
                             # 获取保存的点击操作
-                            onclick = button.onclick
-                            # 重新绑定点击事件
-                            button.clicked.disconnect()
-                            button.clicked.connect(lambda checked, col_index=j, onclick=onclick, nex_row_index=i,
-                                                          this_row_values=this_row_values: onclick(nex_row_index, col_index,
+                            if hasattr(button, "onclick"):  # 说明是按钮组里的按钮，需要重新绑定
+                                # 获取保存的点击操作
+                                onclick = button.onclick
+                                # 重新绑定点击事件
+                                button.clicked.disconnect()
+                                button.clicked.connect(lambda checked, col_index=j, onclick=onclick, nex_row_index=i,
+                                                              this_row_values=this_row_values: onclick(nex_row_index, col_index,
                                                                                                this_row_values))
 
     def __global_radio_action(self, state, **kwargs):
@@ -359,6 +389,9 @@ class TableWidgetWrapper:
 
     def row_length(self):
         return self.table_widget.rowCount()
+
+    def col_length(self):
+        return self.table_widget.columnCount()
 
     def get_values_by_row_index(self, row_index) -> dict:
         values = {}
@@ -402,3 +435,76 @@ class TableWidgetWrapper:
                     cell.fill = fill
         # 保存 workbook
         wb.save(path)
+
+    def save_with_color_v2(self, path, include_cols=None, exclude_cols=None):
+        # 获取数据和颜色
+        df, colors = self.get_data_as_rows_and_color()
+        if include_cols:
+            df = df[include_cols]
+        if exclude_cols:
+            df = df.drop(exclude_cols, axis=1)
+
+        # 创建一个ExcelWriter对象
+        writer = pd.ExcelWriter(path, engine='xlsxwriter')
+
+        # 将DataFrame写入Excel
+        df.to_excel(writer, index=False, header=True, sheet_name='Sheet1')
+
+        # 获取xlsxwriter对象
+        workbook = writer.book
+        worksheet = writer.sheets['Sheet1']
+
+        # 遍历颜色数组，设置单元格的颜色
+        for i, row in enumerate(colors):
+            for j, color in enumerate(row):
+                if color:
+                    color = color.replace("#", "")
+                    # 创建对应的格式
+                    cell_format = workbook.add_format()
+                    cell_format.set_bg_color(color)
+                    # 设置单元格的格式
+                    worksheet.write(i + 1, j, df.iloc[i, j], cell_format)
+
+        # 保存Excel
+        writer.save()
+
+    def save_with_color_v3(self, path, include_cols=None, exclude_cols=None, color_mapping=None):
+        """
+        colors: {
+            QColor.name(): [1,3,4]  #  #ffffff -> [1,2,3]
+        }
+        """
+        # 获取数据和颜色
+        df = self.get_data_as_df()
+        if include_cols:
+            df = df[include_cols]
+        if exclude_cols:
+            df = df.drop(exclude_cols, axis=1)
+
+        # 创建一个ExcelWriter对象
+        writer = pd.ExcelWriter(path, engine='xlsxwriter')
+
+        # 将DataFrame写入Excel
+        df.to_excel(writer, index=False, header=True, sheet_name='Sheet1')
+
+        # 获取xlsxwriter对象
+        workbook = writer.book
+        worksheet = writer.sheets['Sheet1']
+
+        # 遍历颜色数组，设置单元格的颜色
+        for color, cols in color_mapping.items():
+            color = color.replace("#", "")
+            # 创建对应的格式
+            cell_format = workbook.add_format()
+            cell_format.set_bg_color(color)
+            # 设置列的格式
+            if isinstance(cols, list):
+                for col in cols:
+                    worksheet.set_column(col, col, cell_format=cell_format)
+            elif isinstance(cols, dict):
+                for col, row_list in cols.items():
+                    for row in row_list:
+                        worksheet.write(row + 1, col, df.iloc[row, col], cell_format)  # +1是去掉标题行
+
+        # 保存Excel
+        writer.save()

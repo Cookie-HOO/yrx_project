@@ -3,14 +3,16 @@ import shutil
 import traceback
 import typing
 
+import pandas as pd
 from PyQt5.QtCore import pyqtSignal, QThread, QTimer, QTime
 from PyQt5.QtWidgets import QWidget, QLabel, QMainWindow, QMessageBox, QListWidget, QFileDialog, QApplication, \
-    QListView, QTextBrowser, QTableWidget, QDialog, QVBoxLayout
+    QListView, QTextBrowser, QTableWidget, QDialog, QVBoxLayout, QTableWidgetItem
 from PyQt5.QtGui import QPixmap
 
 from yrx_project.client.const import *
 from yrx_project.client.utils.exception import ClientWorkerException
-from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox
+from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox, TipWidgetWithLoading
+from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.utils.file import get_file_name_without_extension, copy_file, get_file_name_with_extension, make_zip
 from yrx_project.utils.logger import logger_sys_error
 from yrx_project.utils.time_obj import TimeObj
@@ -32,6 +34,10 @@ class Background(QWidget):
 
 
 class BaseWorker(QThread):
+    """以signal结尾的信号发送时，会自动调用 MainWindow中定义的方法，如
+    xxx_signal.emit()，会自动调用xxx方法
+
+    """
     # 生命周期信号
     after_start_signal = pyqtSignal()
     refresh_signal = pyqtSignal(str)  # refresh的文本,可以显示在状态栏中
@@ -64,6 +70,7 @@ class BaseWorker(QThread):
         except ClientWorkerException as e:
             return self.modal_signal.emit("error", str(e))
         except Exception as e:
+            self.refresh_signal.emit(f"❌执行失败：{str(e)}")
             return self.modal_signal.emit("error", traceback.format_exc())
         self.before_finished_signal.emit()
 
@@ -113,8 +120,8 @@ class BaseWindow(QMainWindow):
         if level == "info":
             if done:
                 self.done = True
-            if kwargs.get("width") and kwargs.get("height"):
-                MyQMessageBox(title=title, msg=msg, width=kwargs.get("width"), height=kwargs.get("height"))
+            if kwargs.get("funcs") or kwargs.get("width") or kwargs.get("height"):
+                MyQMessageBox(title=title, msg=msg, width=kwargs.get("width"), height=kwargs.get("height"), funcs=kwargs.get("funcs"))
             else:
                 QMessageBox.information(self, title, msg)
         elif level == "warn":
@@ -137,17 +144,30 @@ class BaseWindow(QMainWindow):
         elif level == "tip":
             count_down = kwargs.get("count_down", 3)
             TipWidgetWithCountDown(msg=msg, count_down=count_down)
+        elif level == "loading":
+            tip_with_loading = TipWidgetWithLoading()
+            return tip_with_loading
 
-    def table_modal(self, table_widget):
+    def table_modal(self, table_widget_or_wrapper_or_df: typing.Union[QTableWidget, TableWidgetWrapper, pd.DataFrame], size=None):
         """
         弹出一个表格
-        :param table_widget:
+        :param table_widget_or_wrapper_or_df:
+        :param size: (1200, 1000)
         :return:
         """
+        table_widget = None
+        if isinstance(table_widget_or_wrapper_or_df, QTableWidget):
+            table_widget = table_widget_or_wrapper_or_df
+        elif isinstance(table_widget_or_wrapper_or_df, TableWidgetWrapper):
+            table_widget = table_widget_or_wrapper_or_df.table_widget
+        elif isinstance(table_widget_or_wrapper_or_df, pd.DataFrame):
+            table_widget = TableWidgetWrapper().fill_data_with_color(table_widget_or_wrapper_or_df).table_widget
         dialog = QDialog()
         layout = QVBoxLayout(dialog)
         layout.addWidget(table_widget)
         dialog.setLayout(layout)
+        if size:
+            dialog.resize(*size)
         dialog.exec_()
 
     # 上传
@@ -231,14 +251,14 @@ class BaseWindow(QMainWindow):
         func(*args, **kwargs)
 
 
-class WindowWithMainWorker(BaseWindow):
+class WindowWithMainWorkerBarely(BaseWindow):
     """主窗口的一种模式
     在这个窗口中,存在一个主任务,窗口的设计都围绕这个主任务进行
     """
     SIGNAL_SUFFIX = "_signal"
 
     def __init__(self):
-        super(WindowWithMainWorker, self).__init__()
+        super(WindowWithMainWorkerBarely, self).__init__()
         # 将worker的signal自动注册上handler
         self.worker = self.register_worker()
         for worker_signal in self.worker.__dir__():
@@ -248,11 +268,10 @@ class WindowWithMainWorker(BaseWindow):
                 worker_signal.connect(getattr(self, worker_handler))
         # 计时器
         self.timer = QTimer()
-        self.timer.timeout.connect(self.update_time)
+        self.timer.timeout.connect(self.refresh_during_worker)
         self.start_time = None
         # 任务状态与显示
-        self.refresh_text = ""  # worker中发出来后,绑定到这个变量,被statusbar更新
-        self.status_text = ""  # 完整状态信息,有运行时间 + refresh_text
+        self.status_bar_text = None  # worker中发出来后,绑定到这个变量,被statusbar更新
         self.__status = None
 
     # 注册一个Worker
@@ -296,44 +315,40 @@ class WindowWithMainWorker(BaseWindow):
 
     def set_status_success(self):
         elapsed_time = self.start_time.secsTo(QTime.currentTime())
-        self.statusBar.showMessage(f"Success: Last for: {elapsed_time} seconds")
+        # self.statusBar.showMessage(f"Success: Last for: {elapsed_time} seconds")
         self.timer.stop()
         self.__status = "success"
-        self.modal("info", title="Finished", msg=f"执行完成,共用时{self.start_time.secsTo(QTime.currentTime())}秒")
+        # self.modal("info", title="Finished", msg=f"执行完成,共用时{self.start_time.secsTo(QTime.currentTime())}秒")
 
     def set_status_failed(self):
-        if self.start_time:
-            elapsed_time = self.start_time.secsTo(QTime.currentTime())
-            self.statusBar.showMessage(f"Failed: Last for: {elapsed_time} seconds")
-            self.timer.stop()
-            self.__status = "failed"
+        self.timer.stop()
+        self.__status = "failed"
+        # if self.start_time:
+        #     elapsed_time = self.start_time.secsTo(QTime.currentTime())
+        #     self.statusBar.showMessage(f"Failed: Last for: {elapsed_time} seconds")
+
 
     ############  生命周期: 直接调用, 或者是worker发送事件的消费者 ############
     # 生命周期: worker任务启动
     def after_start(self):
         self.set_status_running()
         self.start_time = QTime.currentTime()
-        self.timer.start(1000)  # 更新频率为1秒
+        self.timer.start(1)  # 更新频率为1毫秒
 
     # 生命周期: worker停止前每秒刷新的内容
-    def update_time(self):  # 计时器停止,自然就没人调用了,不用判断状态
-        elapsed_time = self.start_time.secsTo(QTime.currentTime())
-        self.status_text = f"Last for: {elapsed_time} seconds :: {self.refresh_text}"
-        self.statusBar.showMessage(self.status_text)
+    def refresh_during_worker(self):  # 计时器停止,自然就没人调用了,不用判断状态
+        # elapsed_time = self.start_time.secsTo(QTime.currentTime())
+        # self.status_text = f"Last for: {elapsed_time} seconds :: {self.refresh_text}"
 
-    def refresh(self, refresh_text):
-        self.refresh_text = refresh_text
+        self.set_status_text(self.status_bar_text)  # 设置状态文字
+
+    def refresh(self, status_bar_text):
+        self.status_bar_text = status_bar_text
 
     # 生命周期: worker停止前
     def before_finished(self):
         self.set_status_success()
 
-    # 工具函数
-    def download_zip_from_path(self, path, default_topic, exclude=None):
-        """下载结果文件
-        :return:
-        """
-        # 弹出一个文件保存对话框，获取用户选择的文件路径
-        if not self.is_success:
-            return self.modal("info", "请先执行或等待任务完成..." + self.status_text)
-        super().download_zip_from_path(path, default_topic)
+    def set_status_text(self, text):
+        if isinstance(text, str):
+            self.statusBar.showMessage(text)

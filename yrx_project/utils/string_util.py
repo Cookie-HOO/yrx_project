@@ -1,7 +1,11 @@
 import string
 
+import pandas as pd
+
 
 def remove_punctuation_and_spaces(text):
+    if pd.isna(text):
+        return ""
     text = str(text)
 
     # 定义中文标点符号

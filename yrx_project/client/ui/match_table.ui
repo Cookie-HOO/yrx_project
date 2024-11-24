@@ -83,7 +83,7 @@
       <item>
        <widget class="QLabel" name="label_5">
         <property name="text">
-         <string>第一步 ：上传Excel</string>
+         <string>第一步 ：拖拽或点击上传Excel</string>
         </property>
        </widget>
       </item>
@@ -101,7 +101,21 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="demo_button">
+        <property name="text">
+         <string>📰演示</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="reset_button">
+        <property name="text">
+         <string>重置所有</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="step1_help_info_button">
         <property name="text">
          <string>❓第一步的帮助信息</string>
         </property>
@@ -307,7 +321,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="add_condition_help_info_button">
+       <widget class="QPushButton" name="step2_help_info_button">
         <property name="text">
          <string>❓第二步的帮助信息</string>
         </property>
@@ -428,7 +442,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="run_help_info_button">
+       <widget class="QPushButton" name="step3_help_info_button">
         <property name="text">
          <string>❓第三步的帮助信息</string>
         </property>
@@ -441,7 +455,7 @@
       <item>
        <widget class="QLabel" name="result_detail_text">
         <property name="text">
-         <string> 🚫执行耗时：--毫秒；共匹配：--行（--%）</string>
+         <string>共匹配：--行（--%）</string>
         </property>
        </widget>
       </item>
@@ -464,6 +478,13 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="view_result_button">
+        <property name="text">
+         <string>放大结果查看🔍</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QCheckBox" name="include_detail_checkbox">

@@ -1,3 +1,6 @@
+import typing
+
+
 def dedup_list(l: list) -> list:
     new_list = []
     for i in l:
@@ -17,3 +20,7 @@ def find_repeat_items(l: list) -> list:
         else:
             repeat_items.append(item)
     return repeat_items
+
+
+def find_union_and_intersection(l: typing.List[set]) -> (set, set):
+    return set.union(*l), set.intersection(*l)

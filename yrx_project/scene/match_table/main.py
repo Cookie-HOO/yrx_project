@@ -62,9 +62,11 @@ def check_match_table(main_df, match_cols_and_df: typing.List[dict]) -> typing.L
     return duplicate_info
 
 
-def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame, np.array, np.array):
+def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match_info=True) -> (pd.DataFrame, dict, dict):
     """
     :param main_df:
+    :param add_overall_match_info: 是否增加总体匹配信息
+        要求：多辅助表且主表的匹配列都一样
     :param match_cols_and_df:
         [
             {
@@ -101,9 +103,18 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
         match_id\n匹配附加信息（文字）
         match_id\n匹配附加信息（行数）
     """
+    start_for_all_df = time.time()
+
+    # 返回的全局信息
+    overall_match_info = {}
+    # 返回的详细信息
     detail_match_info = {}
 
-    start_for_all_df = time.time()
+    # 全局的额外信息
+    match_detail_text = []  # ["匹配到", "未匹配到"]
+    no_content_indices = []
+    match_mapping = {}  # {1: [1,3]}  主表的第一列，的第1和3cell 匹配到了
+
     for match_dict in match_cols_and_df:
         start_for_one_df = time.time()
 
@@ -123,6 +134,8 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
 
         match_col_names = [i['match_col'] for i in match_cols]
         match_df[match_num_col_name] = match_df.groupby(match_col_names)[match_col_names[0]].transform('size')
+        match_df[match_num_col_name] = match_df[match_num_col_name].astype(str)
+
         match_df = match_df.drop_duplicates(subset=match_col_names, keep=match_dict["match_policy"])  # 先对match col列去重
 
         # 目前只支持单条件匹配
@@ -138,21 +151,21 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
         unmatched_indices = main_df[~matched_rows].index.values
         no_content_indices = striped_main_col[striped_main_col == ""].index.values
 
-        # 匹配
-        main_df["__主表匹配列"] = striped_main_col
-        match_df["__辅助表匹配列"] = striped_match_col
-        main_df = pd.merge(
-            main_df, match_df[dedup_list(catch_cols + ["__辅助表匹配列", match_num_col_name])], how='left', left_on="__主表匹配列",
-            right_on="__辅助表匹配列", suffixes=('', '_来自辅助表')
-        )
-        main_df = main_df.drop(columns=["__主表匹配列", "__辅助表匹配列"], axis=1)
-
         # 增加匹配情况（文字）
         match_detail_text = [i.strip() for i in match_detail_text.split("｜")]
         main_df[match_text_col_name] = ""
         main_df.loc[matched_indices, match_text_col_name] = match_detail_text[0] if len(match_detail_text) > 0 else ""
         main_df.loc[unmatched_indices, match_text_col_name] = match_detail_text[1] if len(match_detail_text) > 1 else ""
         main_df.loc[no_content_indices, match_text_col_name] = match_detail_text[2] if len(match_detail_text) > 2 else ""
+
+        # 匹配
+        main_df["__主表匹配列"] = striped_main_col
+        match_df["__辅助表匹配列"] = striped_match_col
+        main_df = pd.merge(
+            main_df, match_df[dedup_list(["__辅助表匹配列", match_num_col_name] + catch_cols)], how='left', left_on="__主表匹配列",
+            right_on="__辅助表匹配列", suffixes=('', '_来自辅助表')
+        )
+        main_df = main_df.drop(columns=["__主表匹配列", "__辅助表匹配列"], axis=1)
 
         # 如果需要删除
         delete_index = set()
@@ -180,12 +193,45 @@ def match_table(main_df, match_cols_and_df: typing.List[dict]) -> (pd.DataFrame,
             "catch_cols_index_list": [],
             "match_extra_cols_index_list": [],
         }
+        # 已经匹配的索引
+        main_col_index = main_df.columns.get_loc(main_col)
+        match_rows = match_mapping.get(main_col_index) or []
+        # 加入新索引
+        match_rows.extend(matched_indices)
+        match_mapping[main_col_index] = match_rows
 
     for match_id, detail_match_info_one in detail_match_info.items():
         detail_match_info_one["catch_cols_index_list"] = [main_df.columns.get_loc(i) for i in detail_match_info_one["catch_cols"]]
         detail_match_info_one["match_extra_cols_index_list"] = [main_df.columns.get_loc(i) for i in detail_match_info_one["match_extra_cols"]]
 
-    return main_df, detail_match_info
+    # 组装总体信息
+    total_length = len(main_df)
+    sets = [set(value.get("match_index_list")) for value in detail_match_info.values()]
+    union_set = set.union(*sets)
+    intersection_set = set.intersection(*sets)
+
+    union_set_present = round(len(union_set) / total_length * 100, 2)  # 任一匹配
+    intersection_set_present = round(len(intersection_set) / total_length * 100, 2)  # 全部匹配
+    overall_match_info["union_set_length"] = len(union_set)
+    overall_match_info["intersection_set_length"] = len(intersection_set)
+    overall_match_info["union_set_present"] = union_set_present
+    overall_match_info["intersection_set_present"] = intersection_set_present
+    overall_match_info["match_for_main_col"] = match_mapping  # key是主表的第几列，value是都有第几行匹配到了
+
+    if add_overall_match_info:
+        main_df["%任一条件匹配%"] = match_detail_text[1] if len(match_detail_text) > 1 else ""  # 默认设置为匹配不到
+        main_df["%全部条件匹配%"] = match_detail_text[1] if len(match_detail_text) > 1 else ""  # 默认设置为匹配不到
+
+        main_df.loc[list(union_set), "%任一条件匹配%"] = match_detail_text[0] if len(match_detail_text) > 0 else ""  # 匹配到
+        main_df.loc[no_content_indices, "%任一条件匹配%"] = match_detail_text[2] if len(match_detail_text) > 2 else ""  # 空
+
+        main_df.loc[list(intersection_set), "%全部条件匹配%"] = match_detail_text[0] if len(match_detail_text) > 0 else ""  # 匹配到
+        main_df.loc[no_content_indices, "%全部条件匹配%"] = match_detail_text[2] if len(match_detail_text) > 2 else ""  # 空
+
+        overall_match_info["match_extra_cols"] = [main_df.columns[-1], main_df.columns[-2]]
+        overall_match_info["match_extra_cols_index_list"] = [len(main_df.columns)-1, len(main_df.columns)-2]
+
+    return main_df, overall_match_info, detail_match_info
 
 
 if __name__ == '__main__':
