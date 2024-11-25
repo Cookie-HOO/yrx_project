@@ -1,3 +1,4 @@
+import functools
 import json
 import shutil
 import traceback
@@ -12,10 +13,20 @@ from PyQt5.QtGui import QPixmap
 from yrx_project.client.const import *
 from yrx_project.client.utils.exception import ClientWorkerException
 from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox, TipWidgetWithLoading
-from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.utils.file import get_file_name_without_extension, copy_file, get_file_name_with_extension, make_zip
 from yrx_project.utils.logger import logger_sys_error
 from yrx_project.utils.time_obj import TimeObj
+
+
+def set_error_wrapper(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except Exception as e:
+            self.statusBar.showMessage(f"❌执行报错: {e}")
+            return None
+    return wrapper
 
 
 class Background(QWidget):
@@ -148,13 +159,14 @@ class BaseWindow(QMainWindow):
             tip_with_loading = TipWidgetWithLoading()
             return tip_with_loading
 
-    def table_modal(self, table_widget_or_wrapper_or_df: typing.Union[QTableWidget, TableWidgetWrapper, pd.DataFrame], size=None):
+    def table_modal(self, table_widget_or_wrapper_or_df, size=None):
         """
         弹出一个表格
         :param table_widget_or_wrapper_or_df:
         :param size: (1200, 1000)
         :return:
         """
+        from yrx_project.client.utils.table_widget import TableWidgetWrapper
         table_widget = None
         if isinstance(table_widget_or_wrapper_or_df, QTableWidget):
             table_widget = table_widget_or_wrapper_or_df
@@ -205,6 +217,8 @@ class BaseWindow(QMainWindow):
             for file_name in file_name_list:
                 new_path = os.path.join(copy_to, get_file_name_with_extension(file_name))
                 copy_file(file_name, new_path)
+        if isinstance(file_name_or_list, str):
+            file_name_or_list = [file_name_or_list]
         return file_name_or_list
 
     # 下载

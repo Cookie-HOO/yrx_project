@@ -7,14 +7,15 @@ from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QTableWidget, QMessageBox
 
-from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker
+from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import *
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
-from yrx_project.scene.match_table.const import MATCH_OPTIONS
+from yrx_project.scene.match_table.const import *
 from yrx_project.scene.match_table.main import *
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
 from yrx_project.utils.file import get_file_name_without_extension, make_zip, copy_file, open_file_or_folder_in_browser
 from yrx_project.utils.iter_util import find_repeat_items
+from yrx_project.utils.string_util import IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN
 from yrx_project.utils.time_obj import TimeObj
 
 
@@ -65,17 +66,6 @@ def fill_color_v3(odd_index, even_index, last_index, main_col_map, col_index, ro
     return COLOR_WHITE
 
 
-def set_error_wrapper(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        try:
-            return func(self, *args, **kwargs)
-        except Exception as e:
-            self.statusBar.showMessage(f"❌执行报错: {e}")
-            return None
-    return wrapper
-
-
 class Worker(BaseWorker):
     custom_after_upload_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_add_condition_signal = pyqtSignal(dict)  # 自定义信号
@@ -83,11 +73,6 @@ class Worker(BaseWorker):
     custom_view_result_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
     custom_preview_df_signal = pyqtSignal(dict)  # 自定义信号
-
-    def __init__(self):
-        super().__init__()
-        self.df_text = None
-        self.df_value = None
 
     def my_run(self):
         stage = self.get_param("stage")  # self.equal_buffer_value.value()
@@ -202,6 +187,7 @@ class Worker(BaseWorker):
                         }],
                         "catch_cols": final_catch_cols,
                         "match_policy": "first",  # conditions_df["重复值策略"][i],
+                        "match_ignore_policy": conditions_df["匹配忽略内容"][i],
                         "delete_policy": conditions_df["删除满足条件的行"][i],
                         "match_detail_text": conditions_df["列：匹配附加信息（文字）可编辑"][i],  # ｜ 分割的内容
                     }
@@ -216,7 +202,7 @@ class Worker(BaseWorker):
             matched_df, overall_match_info, detail_match_info = match_table(
                 main_df=df_main,
                 match_cols_and_df=match_cols_and_df,
-                add_overall_match_info=is_all_main_col_same and is_help_table_more_than_one
+                add_overall_match_info=is_help_table_more_than_one
             )
 
             """
@@ -525,6 +511,14 @@ v1.0.3
 3. 所有任务异步执行，并添加loading动画
 4. 下载完成后，新增：打开所在文件夹、打开文件按钮
 [修复] 上传xls文件可能的报错
+
+v1.0.4
+1. 增加匹配条件选项：忽略项目
+2. 添加条件时，主表选择的列给一个默认值（上一个条件的值）
+3. 只要多匹配条件就会出现总评信息：任一匹配和全部匹配
+[修复] xlsx文件无法选择非第一行
+[修复] 全部重置按钮可能会报错
+[修复] 资源文件未打包
 """
 
     # 第一步：上传文件的帮助信息
@@ -543,16 +537,18 @@ v1.0.3
 """
     # 第三步：执行与下载的帮助信息
     step3_help_info_text = """
-1. 如果有多个辅助表，且主表的匹配列相同，会增加一个综合的匹配信息
+1. 如果有多个辅助表，会增加一个综合的匹配信息
     - 任一匹配上 和 全部匹配上
+    - 展示的文字和第一个匹配条件中设置的一致
 2. 各辅助表统计可以查看各辅助表的匹配详情
 3. 在结果表的最后面，通过颜色区分不同辅助表的匹配情况
+4. 匹配到的行会在主表的匹配列中用黄色标记出来
 """
 
     def __init__(self):
         super(MyTableMatchClient, self).__init__()
         uic.loadUi(UI_PATH.format(file="match_table.ui"), self)  # 加载.ui文件
-        self.setWindowTitle("表匹配——By Cookie")
+        self.setWindowTitle("多表匹配——By Cookie")
         self.tip_loading = self.modal(level="loading", titile="加载中...", msg=None)
         # 帮助信息
         self.help_info_button.clicked.connect(lambda: self.modal(level="info", msg=self.help_info_text, width=800, height=400))
@@ -573,7 +569,7 @@ v1.0.3
 
         # 2. 添加匹配条件
         self.conditions_table_wrapper = TableWidgetWrapper(self.conditions_table)
-        self.conditions_table_wrapper.set_col_width(3, 200).set_col_width(4, 260).set_col_width(5, 150).set_col_width(6, 150)
+        self.conditions_table_wrapper.set_col_width(3, 190).set_col_width(4, 200).set_col_width(5, 260).set_col_width(6, 150).set_col_width(7, 150)
         self.add_condition_button.clicked.connect(self.add_condition)
 
         # 3. 执行与下载
@@ -617,7 +613,7 @@ v1.0.3
         self.add_table(file_names, "help")
 
     @set_error_wrapper
-    def reset_all(self):
+    def reset_all(self, *args, **kwargs):
         self.main_tables_wrapper.clear()
         self.help_tables_wrapper.clear()
         self.conditions_table_wrapper.clear()
@@ -800,20 +796,33 @@ v1.0.3
         df_main_columns = add_condition_result.get("df_main_columns")
         table_name = add_condition_result.get("table_name")
         df_help_columns = add_condition_result.get("df_help_columns")
+
+        # 获取上一个条件的主表匹配列
+        default_main_col_index = None
+        if self.conditions_table_wrapper.row_length() > 0:
+            default_main_col = self.conditions_table_wrapper.get_cell_value(self.conditions_table_wrapper.row_length() - 1, 0)
+            if default_main_col in df_main_columns:
+                default_main_col_index = df_main_columns.index(default_main_col)
         self.conditions_table_wrapper.add_rich_widget_row([
             {
                 "type": "dropdown",
                 "values": df_main_columns,  # 主表匹配列
+                "cur_index": default_main_col_index if default_main_col_index is not None else 0,
             }, {
                 "type": "readonly_text",
                 "value": table_name,  # 辅助表
             }, {
                 "type": "dropdown",
                 "values": df_help_columns,  # 辅助表匹配列
-
-                # }, {
-                #     "type": "dropdown",
-                #     "values": ["first", "last"],  # 重复值策略
+            }, {
+                "type": "dropdown",
+                "values": [IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN],  # 重复值策略
+                "cur_index": 1,  # 默认只忽略所有中英文标点符号
+                "options": {
+                    "multi": True,
+                    "bg_colors": [COLOR_YELLOW] + [None] * 4,
+                    "first_as_none": True,
+                }
             }, {
                 "type": "dropdown",
                 "values": ["***不从辅助表增加列***", *df_help_columns],  # 列：从辅助表增加

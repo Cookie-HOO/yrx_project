@@ -28,7 +28,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='工作空间_v1.0.3',
+    name='CatFish_v1.0.4',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -13,7 +13,7 @@ class MultiSelectComboBox(QWidget):
         self.button = QPushButton(values[cur_index])
         self.menu = QMenu()
         self.actions = []
-        self.selected_value_list = []
+        self.selected_value_list = [values[cur_index]]
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.button)
@@ -66,6 +66,7 @@ class MultiSelectComboBox(QWidget):
                             action.setChecked(False)
                 else:
                     self.button.setText(f"选中{len(self.selected_value_list)}项")
+        self.selected_value_list = [action.text() for action in self.actions if action.isChecked()]
 
     def update_order_menu(self):
         self.order_menu.clear()

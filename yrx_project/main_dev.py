@@ -13,6 +13,6 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     demo = MyClient()
-    demo.resize(1200, 1000)  # 根据条件调整
+    demo.resize(1400, 1000)  # 根据条件调整
     demo.show()
     sys.exit(app.exec_())

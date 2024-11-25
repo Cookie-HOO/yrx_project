@@ -6,7 +6,7 @@ import pandas as pd
 
 from yrx_project.scene.match_table.const import MATCH_OPTION, UNMATCH_OPTION, NO_CONTENT_OPTION
 from yrx_project.utils.iter_util import dedup_list
-from yrx_project.utils.string_util import remove_punctuation_and_spaces
+from yrx_project.utils.string_util import remove_by_ignore_policy
 
 
 def check_match_table(main_df, match_cols_and_df: typing.List[dict]) -> typing.List[dict]:
@@ -114,6 +114,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
     match_detail_text = []  # ["匹配到", "未匹配到"]
     no_content_indices = []
     match_mapping = {}  # {1: [1,3]}  主表的第一列，的第1和3cell 匹配到了
+    first_match_text = []
 
     for match_dict in match_cols_and_df:
         start_for_one_df = time.time()
@@ -124,6 +125,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
         match_cols = match_dict['match_cols']  # [{"main_col": "", "match_col"}]
         catch_cols_ = match_dict['catch_cols']  # ["a", "b"]
         delete_policy = match_dict['delete_policy']  # ["a", "b"]
+        match_ignore_policy = match_dict['match_ignore_policy']  # ["不忽略任何内容“]  或者  ["忽略所有中英文标点符号", "中文括号及内容"]
         match_detail_text = match_dict['match_detail_text']  # ["a", "b"]
 
         # 定义列名
@@ -142,8 +144,8 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
         col_dict = match_cols[0]
         main_col = col_dict['main_col']
         match_col = col_dict['match_col']
-        striped_main_col = main_df[main_col].apply(lambda row: remove_punctuation_and_spaces(row))
-        striped_match_col = match_df[match_col].apply(lambda row: remove_punctuation_and_spaces(row))
+        striped_main_col = main_df[main_col].apply(lambda row: remove_by_ignore_policy(row, match_ignore_policy))
+        striped_match_col = match_df[match_col].apply(lambda row: remove_by_ignore_policy(row, match_ignore_policy))
         matched_rows = striped_main_col.isin(striped_match_col)  # 一堆 True False
 
         # 寻找拼配、未匹配的索引
@@ -153,6 +155,8 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
 
         # 增加匹配情况（文字）
         match_detail_text = [i.strip() for i in match_detail_text.split("｜")]
+        if not first_match_text:
+            first_match_text = match_detail_text
         main_df[match_text_col_name] = ""
         main_df.loc[matched_indices, match_text_col_name] = match_detail_text[0] if len(match_detail_text) > 0 else ""
         main_df.loc[unmatched_indices, match_text_col_name] = match_detail_text[1] if len(match_detail_text) > 1 else ""
@@ -222,11 +226,11 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
         main_df["%任一条件匹配%"] = match_detail_text[1] if len(match_detail_text) > 1 else ""  # 默认设置为匹配不到
         main_df["%全部条件匹配%"] = match_detail_text[1] if len(match_detail_text) > 1 else ""  # 默认设置为匹配不到
 
-        main_df.loc[list(union_set), "%任一条件匹配%"] = match_detail_text[0] if len(match_detail_text) > 0 else ""  # 匹配到
-        main_df.loc[no_content_indices, "%任一条件匹配%"] = match_detail_text[2] if len(match_detail_text) > 2 else ""  # 空
+        main_df.loc[list(union_set), "%任一条件匹配%"] = first_match_text[0] if len(first_match_text) > 0 else ""  # 匹配到
+        main_df.loc[no_content_indices, "%任一条件匹配%"] = first_match_text[2] if len(first_match_text) > 2 else ""  # 空
 
-        main_df.loc[list(intersection_set), "%全部条件匹配%"] = match_detail_text[0] if len(match_detail_text) > 0 else ""  # 匹配到
-        main_df.loc[no_content_indices, "%全部条件匹配%"] = match_detail_text[2] if len(match_detail_text) > 2 else ""  # 空
+        main_df.loc[list(intersection_set), "%全部条件匹配%"] = first_match_text[0] if len(first_match_text) > 0 else ""  # 匹配到
+        main_df.loc[no_content_indices, "%全部条件匹配%"] = first_match_text[2] if len(first_match_text) > 2 else ""  # 空
 
         overall_match_info["match_extra_cols"] = [main_df.columns[-1], main_df.columns[-2]]
         overall_match_info["match_extra_cols_index_list"] = [len(main_df.columns)-1, len(main_df.columns)-2]
