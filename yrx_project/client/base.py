@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QMainWindow, QMessageBox, QListWidg
 from PyQt5.QtGui import QPixmap
 
 from yrx_project.client.const import *
+from yrx_project.client.utils.code_widget import CodeDialog
 from yrx_project.client.utils.exception import ClientWorkerException
 from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox, TipWidgetWithLoading
 from yrx_project.utils.file import get_file_name_without_extension, copy_file, get_file_name_with_extension, make_zip
@@ -58,6 +59,10 @@ class BaseWorker(QThread):
     clear_element_signal = pyqtSignal(str)  # clear
     append_element_signal = pyqtSignal(str, str)  # add
     set_element_signal = pyqtSignal(str, str)  # clear + add、
+
+    #
+    hide_tip_loading_signal = pyqtSignal()
+
 
     # 链式添加参数
     def add_param(self, param_key, param_value):
@@ -183,6 +188,10 @@ class BaseWindow(QMainWindow):
             dialog.resize(*size)
         dialog.exec_()
 
+    def code_modal(self, apply_func, language="python", init_code=None):
+        dialog = CodeDialog(language=language, apply_func=apply_func, init_code=init_code)
+        dialog.exec_()
+
     # 上传
     def upload_file_modal(self, patterns=("Excel Files", "*.xlsx"), multi=False, required_base_name_list=None, copy_to: str = None) -> typing.Union[str, list, None]:
         """
@@ -275,6 +284,8 @@ class WindowWithMainWorkerBarely(BaseWindow):
     def __init__(self):
         super(WindowWithMainWorkerBarely, self).__init__()
         # 将worker的signal自动注册上handler
+        self.tip_loading = self.modal(level="loading", titile="加载中...", msg=None)
+
         self.worker = self.register_worker()
         for worker_signal in self.worker.__dir__():
             if worker_signal.endswith(self.SIGNAL_SUFFIX):
@@ -367,3 +378,6 @@ class WindowWithMainWorkerBarely(BaseWindow):
     def set_status_text(self, text):
         if isinstance(text, str):
             self.statusBar.showMessage(text)
+
+    def hide_tip_loading(self):
+        self.tip_loading.hide()

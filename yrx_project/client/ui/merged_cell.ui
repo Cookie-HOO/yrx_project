@@ -148,18 +148,7 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QTableWidget" name="sheet1_table">
-          <column>
-           <property name="text">
-            <string>行操作</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>筛选&amp;排序</string>
-           </property>
-          </column>
-         </widget>
+         <widget class="QTableWidget" name="sheet1_table"/>
         </item>
        </layout>
       </widget>

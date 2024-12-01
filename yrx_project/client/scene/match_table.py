@@ -91,7 +91,8 @@ class Worker(BaseWorker):
             repeat_items = find_repeat_items(all_base_name_list)
             if repeat_items:
                 repeat_items_str = '\n'.join(repeat_items)
-                return self.modal_signal(level="warn", msg=f"存在重复文件名，请修改后上传: \n{repeat_items_str}")
+                self.hide_tip_loading_signal.emit()
+                return self.modal_signal.emit("warn", f"存在重复文件名，请修改后上传: \n{repeat_items_str}")
             check_same_name = time.time()
             sheet_names_list = read_excel_file_with_multiprocessing(
                 [{"path": file_name} for file_name in file_names],
@@ -519,6 +520,9 @@ v1.0.4
 [修复] xlsx文件无法选择非第一行
 [修复] 全部重置按钮可能会报错
 [修复] 资源文件未打包
+
+v1.0.5
+1. 优化从辅助表携带列的功能：可以补充主表而不新建列
 """
 
     # 第一步：上传文件的帮助信息
@@ -803,6 +807,18 @@ v1.0.4
             default_main_col = self.conditions_table_wrapper.get_cell_value(self.conditions_table_wrapper.row_length() - 1, 0)
             if default_main_col in df_main_columns:
                 default_main_col_index = df_main_columns.index(default_main_col)
+
+        # 构造级连选项
+        # first_as_none = {"label": "***不从辅助表增加列***"}
+        cascader_options = [{"label": NO_CATCH_COLS_OPTION}]
+        for option in df_help_columns:
+            column_option = {"label": option, "children": [
+                {"label": ADD_COL_OPTION},
+                {"label": MAKEUP_MAIN_COL, "children": [
+                    {"label": main_label} for main_label in df_main_columns
+                ]}
+            ]}
+            cascader_options.append(column_option)
         self.conditions_table_wrapper.add_rich_widget_row([
             {
                 "type": "dropdown",
@@ -823,12 +839,22 @@ v1.0.4
                     "bg_colors": [COLOR_YELLOW] + [None] * 4,
                     "first_as_none": True,
                 }
+            # }, {
+            #     "type": "dropdown",
+            #     "values": ["***不从辅助表增加列***", *df_help_columns],  # 列：从辅助表增加
+            #     "options": {
+            #         "multi": True,
+            #         "bg_colors": [COLOR_YELLOW] + [None] * len(df_help_columns),
+            #         "first_as_none": True,
+            #     }
+
             }, {
                 "type": "dropdown",
-                "values": ["***不从辅助表增加列***", *df_help_columns],  # 列：从辅助表增加
+                "values": cascader_options,  # 列：从辅助表增加
+                "cur_index": [0],
                 "options": {
-                    "multi": True,
-                    "bg_colors": [COLOR_YELLOW] + [None] * len(df_help_columns),
+                    "cascader": True,
+                    # "bg_colors": [COLOR_YELLOW] + [None] * len(df_help_columns),
                     "first_as_none": True,
                 }
 

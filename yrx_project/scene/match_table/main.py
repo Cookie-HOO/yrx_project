@@ -4,8 +4,8 @@ import typing
 import numpy as np
 import pandas as pd
 
-from yrx_project.scene.match_table.const import MATCH_OPTION, UNMATCH_OPTION, NO_CONTENT_OPTION
-from yrx_project.utils.iter_util import dedup_list
+from yrx_project.scene.match_table.const import MATCH_OPTION, UNMATCH_OPTION, NO_CONTENT_OPTION, MAKEUP_MAIN_COL
+from yrx_project.utils.iter_util import dedup_list, remove_item_from_list
 from yrx_project.utils.string_util import remove_by_ignore_policy
 
 
@@ -123,16 +123,17 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
         match_id = match_dict["id"]
         match_df = match_dict['df']
         match_cols = match_dict['match_cols']  # [{"main_col": "", "match_col"}]
-        catch_cols_ = match_dict['catch_cols']  # ["a", "b"]
+        catch_cols_policy = match_dict['catch_cols']  # [["a", "添加一列"], ["b", "补充到主表", "c"]]
+        catch_cols_ = [p[0] for p in catch_cols_policy]
         delete_policy = match_dict['delete_policy']  # ["a", "b"]
         match_ignore_policy = match_dict['match_ignore_policy']  # ["不忽略任何内容“]  或者  ["忽略所有中英文标点符号", "中文括号及内容"]
         match_detail_text = match_dict['match_detail_text']  # ["a", "b"]
 
-        # 定义列名
+        # 定义新增列名
         match_num_col_name = f"{match_id}%%匹配附加信息（行数）"
         match_text_col_name = f"{match_id}%%匹配附加信息（文字）"
-        catch_cols = [f"{match_id}%%{i}" for i in catch_cols_ if i in match_df.columns]  # 只要找的着的
-        match_df.rename(columns=dict(zip(catch_cols_, catch_cols)), inplace=True)
+        catch_cols_name = [f"{match_id}%%{i}" for i in catch_cols_ if i in match_df.columns]  # 只要找的着的
+        match_df.rename(columns=dict(zip(catch_cols_, catch_cols_name)), inplace=True)
 
         match_col_names = [i['match_col'] for i in match_cols]
         match_df[match_num_col_name] = match_df.groupby(match_col_names)[match_col_names[0]].transform('size')
@@ -166,12 +167,12 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
         main_df["__主表匹配列"] = striped_main_col
         match_df["__辅助表匹配列"] = striped_match_col
         main_df = pd.merge(
-            main_df, match_df[dedup_list(["__辅助表匹配列", match_num_col_name] + catch_cols)], how='left', left_on="__主表匹配列",
+            main_df, match_df[dedup_list(["__辅助表匹配列", match_num_col_name] + catch_cols_name)], how='left', left_on="__主表匹配列",
             right_on="__辅助表匹配列", suffixes=('', '_来自辅助表')
         )
         main_df = main_df.drop(columns=["__主表匹配列", "__辅助表匹配列"], axis=1)
 
-        # 如果需要删除
+        # 如果需要删除行：配置了删除策略
         delete_index = set()
         for delete_p in delete_policy:
             if delete_p == MATCH_OPTION:
@@ -180,9 +181,23 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
                 delete_index.update(unmatched_indices)
             elif delete_p == NO_CONTENT_OPTION:
                 delete_index.update(no_content_indices)
-
         if delete_index:
             main_df = main_df.drop(list(delete_index))
+
+        # 如果需要删除列：从辅助表携带（只补充到主表，不增加列）
+        no_need_cols = []
+        for catch_col_policy, catch_col_name in zip(catch_cols_policy, catch_cols_name):  # [["a", "添加一列"], ["b", "补充到主表", "c"]]
+            if catch_col_policy[1] == MAKEUP_MAIN_COL:  # 说明只是补充，不需要从辅助表搬运
+                # 统计不需要的列（从辅助表搬过来的）
+                no_need_cols.append(catch_col_name)
+
+                # 将主表的列内容进行替换
+                to_makeup_main_col = catch_col_policy[2]
+                main_df[to_makeup_main_col] = main_df[to_makeup_main_col].replace('', np.nan)  # 将空字符串替换为NaN
+                main_df[to_makeup_main_col] = main_df[to_makeup_main_col].fillna(main_df[catch_col_name])  # 用b列的值替换a列中的NaN
+        # 删除对应列
+        main_df.drop(no_need_cols, axis=1, inplace=True)
+        remove_item_from_list(catch_cols_name, no_need_cols, iter_delete=True)
 
         detail_match_info[match_id] = {
             "time_cost": time.time() - start_for_one_df,
@@ -191,7 +206,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
             "no_content_index_list": no_content_indices,
             "delete_index_list": list(delete_index),
 
-            "catch_cols": catch_cols,
+            "catch_cols": catch_cols_name,
             "match_extra_cols": [match_num_col_name, match_text_col_name],
 
             "catch_cols_index_list": [],

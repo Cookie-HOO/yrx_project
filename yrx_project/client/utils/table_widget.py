@@ -13,9 +13,10 @@ from openpyxl.workbook import Workbook
 
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker
 from yrx_project.client.const import COLOR_BLUE
+from yrx_project.client.utils.cascader_selector import CascaderSelectComboBox
 from yrx_project.client.utils.multi_selector import MultiSelectComboBox
 from yrx_project.utils.color_util import rgb_to_hex
-from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
+from yrx_project.utils.df_util import read_excel_file_with_multiprocessing, MergedCells
 
 """
 pyqt5的table组件，的set和get 
@@ -63,6 +64,8 @@ class TableWidgetWrapper:
             self.table_widget.dropEvent = lambda event: drag_drop_event(event, drag_func)
             self.table_widget.dragMoveEvent = drag_move_event
         self.raw_df = None  # fill之后存储数据，可以用 self.raw_df.merged_cells获取合并单元格信息
+        self.merged_cells = None  # [[min_row, min_col, max_row, max_col], [], []]
+        self.has_column_widget = False  # 默认在header中是column，如果设置了column_func说明占了一行当column
 
     def __hidden_column(self):
         for i in range(self.table_widget.columnCount()):
@@ -141,6 +144,15 @@ class TableWidgetWrapper:
 
         elif isinstance(widget, MultiSelectComboBox):
             return widget.selected_values()  # 多选的值
+        elif isinstance(widget, CascaderSelectComboBox):
+            return widget.selected_values()  # 多选的值
+        elif isinstance(widget, QWidget):
+            line_edit = widget.findChild(QLineEdit)
+            if line_edit is not None:
+                return line_edit.text()
+            label = widget.findChild(QLabel)
+            if label is not None:
+                return label.text()
 
         # 如果既不是QTableWidgetItem也不是QComboBox，返回None
         return None
@@ -171,11 +183,13 @@ class TableWidgetWrapper:
             df: pd.DataFrame,
             cell_style_func: typing.Callable[[pd.DataFrame, int, int], QColor] = None,
             cell_widget_func: typing.Callable[[pd.DataFrame, int, int], QWidget] = None,
-            column_widget_func: typing.Callable[[list, int], QWidget] = None,  # 入参：df的列名 和 列索引
+            column_widget_func: typing.Callable[['TableWidgetWrapper', list, int], QWidget] = None,  # 入参：df的列名 和 列索引
     ):
         cols_to_drop = [i for i in df.columns if str(i).startswith('__')]
         fill_df = df.drop(cols_to_drop, axis=1)
         self.raw_df = df
+        if hasattr(df, "merged_cells"):
+            self.merged_cells = df.merged_cells
         fill_df.fillna('', inplace=True)
         fill_data = fill_df.values.tolist()
         self.table_widget.setColumnCount(len(fill_data[0]) if fill_data else 0)
@@ -188,13 +202,12 @@ class TableWidgetWrapper:
             self.table_widget.setRowCount(len(fill_data))
             self.table_widget.setHorizontalHeaderLabels([str(i) for i in fill_df.columns])
         else:  # 用第一行当header
+            self.has_column_widget = True
             self.table_widget.setRowCount(len(fill_data)+1)
             self.table_widget.setHorizontalHeaderLabels([str(ind+1) for ind, v in enumerate(fill_df.columns)])
             start_value_row = 1
-            self.table_widget.setRowHeight(0, 60)
-
             for index, col_name in enumerate(fill_df.columns):
-                self.table_widget.setCellWidget(0, index, column_widget_func(list(fill_df.columns), index))
+                self.table_widget.setCellWidget(0, index, column_widget_func(self, list(fill_df.columns), index))
 
         self.table_widget.setUpdatesEnabled(False)
         # 设置数据
@@ -203,7 +216,6 @@ class TableWidgetWrapper:
             for j, value in enumerate(row):
                 item = QTableWidgetItem(str(value))
                 if cell_widget_func is None:
-                    item = QTableWidgetItem(str(value))
                     if cell_style_func:
                         color = cell_style_func(fill_df, i, j)
                         if color:
@@ -214,30 +226,37 @@ class TableWidgetWrapper:
                     self.table_widget.setCellWidget(i, j, item)
 
         # 设置合并情况
-        if hasattr(df, "merged_cells"):
-            merged_cells = df.merged_cells
-            for merged_cell in merged_cells:
-                self.table_widget.setSpan(merged_cell.min_row-1, merged_cell.min_col-1, merged_cell.max_row-merged_cell.min_row+1, merged_cell.max_col-merged_cell.min_col+1)
+        if self.merged_cells:
+            for merged_cell in self.merged_cells.iter():
+                min_row, min_col, max_row, max_col = merged_cell
+                args = (min_row, min_col, max_row-min_row+1, max_col-min_col+1)
+                self.table_widget.setSpan(*args)
         self.table_widget.setUpdatesEnabled(True)
 
         return self
 
     def get_data_as_df(self) -> pd.DataFrame:
         headers = []
-        for i in range(self.table_widget.columnCount()):
-            header = self.table_widget.horizontalHeaderItem(i)
-            if header is not None:
-                headers.append(header.text())
-            else:
-                headers.append(f'Column{i}')
+        if not self.has_column_widget:
+            for i in range(self.table_widget.columnCount()):
+                header = self.table_widget.horizontalHeaderItem(i)
+                if header is not None:
+                    headers.append(header.text())
+                else:
+                    headers.append(f'Column{i}')
+        else:  # 说明第一行才是
+            headers = [self.get_cell_value(0, i) for i in range(self.table_widget.columnCount())]
         data = []
-        for i in range(self.table_widget.rowCount()):
+        data_start_row = 1 if self.has_column_widget else 0
+        for i in range(data_start_row, self.table_widget.rowCount()):
             row_data = []
             for j in range(self.table_widget.columnCount()):
                 item = self.get_cell_value(i, j)
                 row_data.append(item or '')
             data.append(row_data)
         df = pd.DataFrame(data, columns=headers)
+        if self.merged_cells:
+            df.merged_cells = self.merged_cells
         return df
 
     def get_data_as_rows_and_color(self) -> (pd.DataFrame, list):
@@ -329,6 +348,10 @@ class TableWidgetWrapper:
                 if cell_options.get("multi"):
                     combo_multi_box = MultiSelectComboBox(values, cur_index=cell.get("cur_index", 0), font_colors=font_colors, bg_colors=bg_colors, first_as_none=cell_options.get("first_as_none"))
                     self.table_widget.setCellWidget(nex_row_index, col_index, combo_multi_box)
+                elif cell_options.get("cascader"):
+                    cascader_multi_box = CascaderSelectComboBox(values, cur_index=cell.get("cur_index", [0]), first_as_none=cell_options.get("first_as_none"))
+                    self.table_widget.setCellWidget(nex_row_index, col_index, cascader_multi_box)
+
                 else:
                     combo_box = QComboBox()
                     combo_box.addItems(values)
@@ -535,3 +558,22 @@ class TableWidgetWrapper:
 
         # 保存Excel
         writer.save()
+        writer.close()
+
+    def save_with_merged_cells(self, path):
+        if self.merged_cells:
+            df = self.get_data_as_df()
+            with pd.ExcelWriter(path, engine='xlsxwriter') as writer:
+                # 将 DataFrame 写入 Excel
+                df.to_excel(writer, index=False, header=True, sheet_name='Sheet1')
+                # 获取 xlsxwriter 的 workbook 和 worksheet 对象
+                workbook = writer.book
+                worksheet = writer.sheets['Sheet1']
+
+                # 合并单元格（例如，合并 A1 到 B1）
+                # 使用行列索引，注意索引从 0 开始
+                # 读取左上角的值
+                for merged_cell in self.merged_cells.iter():
+                    min_row, min_col, max_row, max_col = merged_cell
+                    top_left_value = df.iloc[min_row, min_col]
+                    worksheet.merge_range(min_row, min_col, max_row, max_col, top_left_value)

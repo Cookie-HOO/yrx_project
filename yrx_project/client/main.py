@@ -11,7 +11,7 @@ class MyClient(QMainWindow):
     def __init__(self):
         super(MyClient, self).__init__()
         uic.loadUi(UI_PATH.format(file="main.ui"), self)  # 加载.ui文件
-        self.setWindowTitle("CatFish_v1.0.4")
+        self.setWindowTitle("工作空间_v1.0.5")
         self.setWindowIcon(QIcon(STATIC_FILE_PATH.format(file="app.ico")))
         self.main_tab.addTab(MyTableMatchClient(), '多表匹配')
-        # self.main_tab.addTab(MyMergedCellClient(), '合并单元格')
+        self.main_tab.addTab(MyMergedCellClient(), '合并单元格')

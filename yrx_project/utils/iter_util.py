@@ -24,3 +24,29 @@ def find_repeat_items(l: list) -> list:
 
 def find_union_and_intersection(l: typing.List[set]) -> (set, set):
     return set.union(*l), set.intersection(*l)
+
+
+def remove_item_from_list_(l: typing.List[typing.Any], remove: typing.Any) -> typing.List[typing.Any]:
+    """
+    从l中remove掉第一个remove元素
+    l：是一个嵌套list
+    """
+    try:
+        l.remove(remove)
+    except ValueError:
+        # If 'remove' is not in 'l', do nothing
+        pass
+    return l
+
+
+def remove_item_from_list(l: typing.List[typing.Any], remove: typing.Any, iter_delete=False) -> typing.List[typing.Any]:
+    """
+    从l中remove掉第一个remove元素
+    l：是一个嵌套list
+    """
+    if iter_delete:
+        for item in remove:
+            remove_item_from_list_(l, item)
+    else:
+        remove_item_from_list_(l, remove)
+    return l
