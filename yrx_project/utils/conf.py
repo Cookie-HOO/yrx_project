@@ -78,7 +78,14 @@ class CSVConf:
         return self
 
     def append(self, value: typing.Union[pd.DataFrame, typing.List[dict], dict]):
-        self.df = self.df.append(value, ignore_index=True)
+        # 如果 value 是字典，将其转换为 DataFrame
+        if isinstance(value, dict):
+            value = pd.DataFrame([value])
+        # 如果 value 是字典列表，将其转换为 DataFrame
+        elif isinstance(value, list) and all(isinstance(item, dict) for item in value):
+            value = pd.DataFrame(value)
+        # 使用 pd.concat 拼接 DataFrame
+        self.df = pd.concat([self.df, value], ignore_index=True)
         return self
 
     def dedup(self):

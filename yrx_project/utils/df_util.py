@@ -62,7 +62,10 @@ def read_excel_file(path, sheet_name, row_num_for_column, nrows, with_merged_cel
     header = None
     if row_num_for_column is not None:
         header = int(row_num_for_column) - 1
-    df = pd.read_excel(path, sheet_name=sheet_name, header=header, nrows=nrows)
+    try:
+        df = pd.read_excel(path, sheet_name=sheet_name, header=header, nrows=nrows)
+    except Exception as e:
+        return pd.DataFrame()
     if with_merged_cells:
         wb = load_workbook(filename=path)
         # 选择要操作的sheet

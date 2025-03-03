@@ -728,7 +728,7 @@ v1.0.5
     def preview_table_button(self, row_index, table_type, *args, **kwargs):
         # 读取文件进行上传
         df_config = self.get_df_config_by_row_index(row_index, table_type)
-        df_config["nrows"] = 3
+        df_config["nrows"] = 10  # 实际读取的行数
         params = {
             "stage": "preview_df",  # 第一阶段
             "df_config": df_config,  # 上传的所有文件名
@@ -740,10 +740,12 @@ v1.0.5
     def custom_preview_df(self, preview_result):
         df = preview_result.get("df")
         status_msg = preview_result.get("status_msg")
-        if len(df) >= 3:
+        max_rows_to_show = 10
+        if len(df) >= max_rows_to_show:
             extra = [f'...省略剩余行' for _ in range(df.shape[1])]
             new_row = pd.Series(extra, index=df.columns)
-            df = df.append(new_row, ignore_index=True)
+            # 截取前 max_rows_to_show 行，再拼接省略行信息
+            df = pd.concat([df.head(max_rows_to_show), pd.DataFrame([new_row])], ignore_index=True)
         self.tip_loading.hide()
         self.set_status_text(status_msg)
         self.table_modal(df, size=(400, 200))
