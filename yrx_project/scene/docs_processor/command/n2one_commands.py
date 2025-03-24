@@ -1,13 +1,10 @@
 import os
 
+from yrx_project.const import PROJECT_PATH
 from yrx_project.scene.docs_processor.base import Command, ActionContext
 
 
 class MergeDocumentsCommand(Command):
-    def __init__(self, inputs, output, **kwargs):
-        super(MergeDocumentsCommand, self).__init__(**kwargs)
-        self.inputs = inputs
-        self.output = output
 
     def office_word_run(self, context: ActionContext):
         word = context.word
@@ -17,7 +14,7 @@ class MergeDocumentsCommand(Command):
             # 创建一个范围对象，初始指向文档末尾
             range_obj = new_doc.Range(0, 0)
 
-            for file_path in self.inputs:
+            for file_path in context.input_paths:
                 if not os.path.exists(file_path):
                     raise FileNotFoundError(f"Merge source not found: {file_path}")
 
@@ -37,7 +34,9 @@ class MergeDocumentsCommand(Command):
                 range_obj.End = new_doc.Content.End
 
             # 保存合并后的文档
-            new_doc.SaveAs(os.path.abspath(self.output))
+            output_path = os.path.join(PROJECT_PATH, "merged", "merged.docx")
+            new_doc.SaveAs(os.path.abspath(output_path))
+            return new_doc
 
         finally:
             new_doc.Close()

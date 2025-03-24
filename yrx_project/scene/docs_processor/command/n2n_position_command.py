@@ -6,9 +6,7 @@ from yrx_project.scene.docs_processor.base import Command, ActionContext
 class SearchTextCommand(Command):
     def __init__(self, content, pointer_after_search, **kwargs):
         super(SearchTextCommand, self).__init__(**kwargs)
-        self.content = content
         self.pointer_after_search = pointer_after_search  # "before" or "after"
-
 
     def office_word_run(self, context: ActionContext):
         selection = context.selection
@@ -45,10 +43,9 @@ class MoveCursorCommand(Command):
         'right': 'character'
     }
 
-    def __init__(self, direction, units=1, **kwargs):
+    def __init__(self, direction, **kwargs):
         super(MoveCursorCommand, self).__init__(**kwargs)
         self.direction = direction.lower()
-        self.units = units
         self.unit_type = self.DIRECTION_MAPPING.get(self.direction)
 
     def office_word_run(self, context: ActionContext):
@@ -62,4 +59,4 @@ class MoveCursorCommand(Command):
 
         # 执行移动操作
         method = getattr(context.selection, method_name)
-        method(Unit=unit, Count=self.units)
+        method(Unit=unit, Count=self.content)

@@ -2,6 +2,7 @@ from multiprocessing import Lock
 
 
 class ActionContext:
+    input_paths = None
     doc = None
     selection = None
     word = None
@@ -14,6 +15,7 @@ class ActionContext:
     total_task = -1
 
     def __init__(self):
+        self.input_paths = None
         self.doc = None
         self.selection = None
         self.word = None
@@ -30,11 +32,12 @@ class ActionContext:
 
 
 class Command:
-    action_type = None
+    action_type_id = None
     action_name = None
 
-    def __init__(self, action_type, action_name, **kwargs):
-        self.action_type = action_type
+    def __init__(self, content, action_type_id, action_name, **kwargs):
+        self.content = content
+        self.action_type_id = action_type_id
         self.action_name = action_name
 
     def run(self, context: ActionContext):

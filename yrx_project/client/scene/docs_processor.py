@@ -6,10 +6,11 @@ from PyQt5.QtCore import pyqtSignal
 
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import UI_PATH
+from yrx_project.client.utils.button_menu_widget import ButtonMenuWrapper
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.const import PROJECT_PATH
 from yrx_project.scene.docs_processor.const import ACTION_MAPPING
-from yrx_project.scene.docs_processor.main import get_docx_pages_with_multiprocessing, run_with_actions
+from yrx_project.client.scene.docs_processor_adapter import run_with_actions, build_action_types_menu
 from yrx_project.utils.file import get_file_name_without_extension
 from yrx_project.utils.iter_util import find_repeat_items
 from yrx_project.utils.time_obj import TimeObj
@@ -378,7 +379,8 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         #
         # # 2. 添加动作流
         self.actions_table_wrapper = TableWidgetWrapper(self.actions_table)
-        self.add_action_button.clicked.connect(self.add_action)
+        self.add_action_button_menu = ButtonMenuWrapper(self, self.add_action_button, build_action_types_menu(self.actions_table_wrapper))
+        # self.add_action_button.clicked.connect(self.add_action)
         #
         # # 3. 执行与下载
         # self.matched_df, self.overall_match_info, self.detail_match_info = None, None, None  # 用来获取结果
