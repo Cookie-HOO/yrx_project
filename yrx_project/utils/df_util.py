@@ -100,7 +100,7 @@ def read_excel_columns(path, sheet_name, row_num_for_column, *args, **kwargs) ->
         # 获取第一个工作表
         ws = wb[sheet_name]
         # 读取特定的行
-        row_data = [ws.cell(int(row_num_for_column), col).value for col in range(1, 100) if ws.cell(1, col).value]
+        row_data = [ws.cell(int(row_num_for_column), col).value for col in range(1, 100) if ws.cell(int(row_num_for_column), col).value]
     else:
         # 打开工作簿
         wb = xlrd.open_workbook(path)

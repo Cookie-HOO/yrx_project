@@ -1,0 +1,6 @@
+PyQt5
+openpyxl
+pandas
+xlsxwriter
+xlrd
+pywin32
