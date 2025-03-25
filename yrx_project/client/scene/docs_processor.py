@@ -9,7 +9,8 @@ from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_
 from yrx_project.client.const import UI_PATH
 from yrx_project.client.utils.button_menu_widget import ButtonMenuWrapper
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
-from yrx_project.const import PROJECT_PATH
+from yrx_project.client.utils.tree_file_widget import TreeFileWrapper
+from yrx_project.const import PROJECT_PATH, TEMP_PATH
 from yrx_project.scene.docs_processor.base import ActionContext
 from yrx_project.scene.docs_processor.const import ACTION_MAPPING
 from yrx_project.client.scene.docs_processor_adapter import run_with_actions, build_action_types_menu
@@ -22,6 +23,7 @@ class Worker(BaseWorker):
     custom_after_upload_signal = pyqtSignal(dict)  # 自定义信号
     # custom_after_add_condition_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_run_signal = pyqtSignal(dict)  # 自定义信号
+    custom_update_progress_signal = pyqtSignal(float)
     # custom_view_result_signal = pyqtSignal(dict)  # 自定义信号
     # custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
     # custom_preview_df_signal = pyqtSignal(dict)  # 自定义信号
@@ -94,6 +96,7 @@ class Worker(BaseWorker):
                 if ctx.file_path:
                     file_name = get_file_name_without_extension(ctx.file_path)
                 self.refresh_signal.emit(f"文档处理中...阶段: {ctx.command_container.step_and_name} 进度：{ctx.done_task_num}/{ctx.total_task_num}; 文件: {file_name}: 操作: {ctx.command.action_name}")
+                self.custom_update_progress_signal.emit(ctx.done_task_num / ctx.total_task_num)
             run_with_actions(
                 input_paths=df_docs["__文档路径"].to_list(),
                 df_actions=df_actions,
@@ -194,8 +197,17 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
                 run_button：执行按钮
                 result_detail_text：执行详情
                      🚫执行耗时：--毫秒；共匹配：--行（--%）
+                result_tree：结果文件的树状结构
+                run_progress_bar：进度条
                 download_result_button: 下载结果按钮
-                result_table：结果表
+                result_preview_grid_layout：结果文件的预览
+                    test1_preview_img QLabel 测试缩略图
+                    test2_preview_img QLabel 测试缩略图
+                    test3_preview_img QLabel 测试缩略图
+                    test4_preview_img QLabel 测试缩略图
+                result_preview_col_name_text
+                preview_col_num_add_button
+                preview_col_num_sub_button
         """
 
     help_info_text = """<html>
@@ -361,8 +373,9 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         #                                               drag_func=self.help_drag_drop_event)  # 上传table之后展示所有table的表格
         #
         # # 2. 添加动作流
-        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table)
+        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 150).set_col_width(4, 200)
         self.add_action_button_menu = ButtonMenuWrapper(self, self.add_action_button, build_action_types_menu(self.actions_table_wrapper))
+
         # self.add_action_button.clicked.connect(self.add_action)
         #
         # # 3. 执行与下载
@@ -370,6 +383,18 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # self.odd_cols_index, self.even_cols_index, self.overall_cols_index = None, None, None  # 用来标记颜色
         # self.match_for_main_col = None  # 主表匹配列的映射
         self.run_button.clicked.connect(self.run)
+        self.run_progress_bar.setValue(0)
+        self.tree_file_wrapper = TreeFileWrapper(self.result_tree, TEMP_PATH)
+
+
+        """                result_preview_col_num_text
+                preview_col_num_add_button
+                preview_col_num_sub_button"""
+        self.preview_col_num_add_button.clicked.connect(lambda: self.update_preview_col_num(1))
+        self.preview_col_num_sub_button.clicked.connect(lambda: self.update_preview_col_num(-1))
+
+
+        # self.worker.custom_after_upload_signal.connect(self.custom_after_upload)
         # self.result_table_wrapper = TableWidgetWrapper(self.result_table)
         # self.result_detail_info_button.clicked.connect(self.show_result_detail_info)
         # # self.preview_result_button.clicked.connect(self.preview_result)
@@ -736,6 +761,14 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         self.set_status_text(status_msg)
         return self.modal(level="info", msg=f"✅文档处理成功，共耗时：{duration}秒")
 
+    @set_error_wrapper
+    def update_preview_col_num(self, step):
+        new_num = int(self.preview_col_num_text.text()) + step
+        if 0 < new_num < 6:
+            self.preview_col_num_text.setText(str(new_num))
+
+
+
     # @set_error_wrapper
     # def show_result_detail_info(self, *args, **kwargs):
     #     if not self.detail_match_info:
@@ -825,3 +858,5 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     #          "role": QMessageBox.ActionRole},
     #     ])
 
+    def custom_update_progress(self, value, *args, **kwargs):
+        self.run_progress_bar.setValue(int(value * 100))  # 0-100的整数

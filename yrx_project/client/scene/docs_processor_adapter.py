@@ -128,16 +128,16 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
                         }, {
                             "type": "button_group",
                             "values": [
-                                # {
-                                #     "value": "向上移动",
-                                #     "onclick": lambda row_index, col_index, row: self.actions_table_wrapper.swap_rows(
-                                #         row_index, row_index+1),
-                                # },
-                                # {
-                                #     "value": "向下移动",
-                                #     "onclick": lambda row_index, col_index, row: self.actions_table_wrapper.swap_rows(
-                                #         row_index, row_index-1),
-                                # },
+                                {
+                                    "value": "向下",
+                                    "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
+                                        row_index, row_index+1),
+                                },
+                                {
+                                    "value": "向上",
+                                    "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
+                                        row_index, row_index-1),
+                                },
                                 {
                                     "value": "删除",
                                     "onclick": lambda row_index, col_index, row_: table_wrapper.delete_row(

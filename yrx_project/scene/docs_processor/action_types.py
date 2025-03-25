@@ -1,6 +1,6 @@
 import pandas as pd
 
-from yrx_project.client.const import READONLY_TEXT, EDITABLE_TEXT
+from yrx_project.client.const import READONLY_TEXT, EDITABLE_TEXT, DROPDOWN
 from yrx_project.scene.docs_processor.base import Command, MIXING_TYPE_ID
 from yrx_project.scene.docs_processor.command.n2n_position_command import SearchTextCommand, MoveCursorCommand
 from yrx_project.scene.docs_processor.command.n2n_select_command import SelectCurrentCommand
@@ -94,6 +94,7 @@ action_types.load_from_config({
     "update": {
         "text": [
             ["replace_text", "替换文本", EDITABLE_TEXT, "", ReplaceTextCommand, None],
+            ["replace_text", "修改字体", DROPDOWN, ["a", "b"], ReplaceTextCommand, None],
         ]
     },
 

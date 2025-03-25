@@ -291,6 +291,48 @@ class TableWidgetWrapper:
             for j in range(self.table_widget.columnCount()):
                 self.table_widget.setItem(i, j, QTableWidgetItem(""))
 
+    def swap_rows(self, row1, row2):
+        """交换指定的两行（包含所有列的内容和控件）"""
+        # 边界检查
+        if (
+                row1 < 0
+                or row1 >= self.table_widget.rowCount()
+                or row2 < 0
+                or row2 >= self.table_widget.rowCount()
+        ):
+            return
+
+        # 遍历所有列（修正列遍历范围）
+        for col in range(self.table_widget.columnCount()-1):  # 不交换最后一列
+            # 交换 QTableWidgetItem
+            item1 = self.table_widget.takeItem(row1, col)
+            item2 = self.table_widget.takeItem(row2, col)
+            self.table_widget.setItem(row1, col, item2)
+            self.table_widget.setItem(row2, col, item1)
+
+            # 交换 QWidget（安全方式）
+            # 1. 获取控件引用
+            widget1 = self.table_widget.cellWidget(row1, col)
+            widget2 = self.table_widget.cellWidget(row2, col)
+
+            # 2. 立即解除表格关联
+            self.table_widget.setCellWidget(row1, col, None)
+            self.table_widget.setCellWidget(row2, col, None)
+
+            # 3. 操作控件（此时控件仅由Python引用保持存活）
+            if widget1:
+                widget1.setParent(None)
+                self.table_widget.setCellWidget(row2, col, widget1)
+            if widget2:
+                widget2.setParent(None)
+                self.table_widget.setCellWidget(row1, col, widget2)
+
+            if widget1:
+                print(f"Widget1 valid: {widget1.isWidgetType()}")
+            if widget2:
+                print(f"Widget2 valid: {widget2.isWidgetType()}")
+
+
     def add_rich_widget_row(self, row):
         """增加复杂的组件行，支持以下类型
         只读文本: readonly_text:
