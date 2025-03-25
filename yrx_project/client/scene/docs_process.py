@@ -11,10 +11,12 @@ from yrx_project.client.utils.button_menu_widget import ButtonMenuWrapper
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.client.utils.tree_file_widget import TreeFileWrapper
 from yrx_project.const import PROJECT_PATH, TEMP_PATH
-from yrx_project.scene.docs_processor.base import ActionContext
-from yrx_project.scene.docs_processor.const import ACTION_MAPPING
-from yrx_project.client.scene.docs_processor_adapter import run_with_actions, build_action_types_menu
-from yrx_project.utils.file import get_file_name_without_extension
+from yrx_project.scene.process_docs.base import ActionContext
+from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
+from yrx_project.client.scene.docs_process_adapter import run_with_actions, build_action_types_menu, \
+    cleanup_scene_folder, has_content_in_scene_folder
+from yrx_project.utils.file import get_file_name_without_extension, get_file_detail, FileDetail, open_file_or_folder, \
+    get_file_name_with_extension, copy_file
 from yrx_project.utils.iter_util import find_repeat_items
 from yrx_project.utils.time_obj import TimeObj
 
@@ -37,10 +39,10 @@ class Worker(BaseWorker):
             start_upload_time = time.time()
 
             table_wrapper = self.get_param("table_wrapper")
-            file_names = self.get_param("file_names")
+            file_paths = self.get_param("file_paths")
             # 校验是否有同名文件
-            base_name_list = [get_file_name_without_extension(file_name) for file_name in file_names]
-            all_base_name_list = base_name_list + table_wrapper.get_data_as_df()["文档名称"].to_list()
+            file_details = [get_file_detail(file_path) for file_path in file_paths]
+            all_base_name_list = [i.name_without_extension for i in file_details] + table_wrapper.get_data_as_df()["文档名称"].to_list()
             repeat_items = find_repeat_items(all_base_name_list)
             if repeat_items:
                 repeat_items_str = '\n'.join(repeat_items)
@@ -51,15 +53,13 @@ class Worker(BaseWorker):
             # pages = get_docx_pages_with_multiprocessing(file_names)
             # read_file_time = time.time()
             status_msg = \
-                f"✅上传{len(file_names)}张表成功，共耗时：{round(time.time() - start_upload_time, 2)}s："\
+                f"✅上传{len(file_paths)}个文档成功，共耗时：{round(time.time() - start_upload_time, 2)}s："\
                 f"校验文件名：{round(check_same_name - start_upload_time, 2)}s；"\
                 # f"读取文件：{round(read_file_time - check_same_name, 2)}s；"\
 
             self.custom_after_upload_signal.emit({
                 # "pages": pages,
-                "table_wrapper": table_wrapper,
-                "base_name_list": base_name_list,
-                "file_names": file_names,
+                "file_details": file_details,
                 "status_msg": status_msg,
             })
         elif stage == "preview_df":
@@ -367,14 +367,19 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         self.add_docs_button.clicked.connect(self.add_docs)
         # self.reset_button.clicked.connect(self.reset_all)
         # 1.2 表格
-        self.docs_tables_wrapper = TableWidgetWrapper(self.docs_table,
-                                                      drag_func=self.docs_drag_drop_event)  # 上传docs之后展示所有table的表格
+        self.docs_tables_wrapper = TableWidgetWrapper(
+            self.docs_table, drag_func=self.docs_drag_drop_event).set_col_width(2, 150)  # 上传docs之后展示所有table的表格
         # self.help_tables_wrapper = TableWidgetWrapper(self.help_tables_table,
         #                                               drag_func=self.help_drag_drop_event)  # 上传table之后展示所有table的表格
         #
         # # 2. 添加动作流
-        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 150).set_col_width(4, 200)
-        self.add_action_button_menu = ButtonMenuWrapper(self, self.add_action_button, build_action_types_menu(self.actions_table_wrapper))
+        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 200)
+        self.add_action_button_menu = ButtonMenuWrapper(
+            self, self.add_action_button, build_action_types_menu(self.actions_table_wrapper)
+        )
+        self.action_suit_button_menu = ButtonMenuWrapper(
+            self, self.action_suit_button, build_action_types_menu(self.actions_table_wrapper)
+        )
 
         # self.add_action_button.clicked.connect(self.add_action)
         #
@@ -384,51 +389,48 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # self.match_for_main_col = None  # 主表匹配列的映射
         self.run_button.clicked.connect(self.run)
         self.run_progress_bar.setValue(0)
-        self.tree_file_wrapper = TreeFileWrapper(self.result_tree, TEMP_PATH)
-
-
-        """                result_preview_col_num_text
-                preview_col_num_add_button
-                preview_col_num_sub_button"""
-        self.preview_col_num_add_button.clicked.connect(lambda: self.update_preview_col_num(1))
-        self.preview_col_num_sub_button.clicked.connect(lambda: self.update_preview_col_num(-1))
+        self.tree_file_wrapper = TreeFileWrapper(
+            self.result_tree, SCENE_TEMP_PATH,
+            on_double_click=lambda f: open_file_or_folder(f),
+            right_click_menu=[
+                {"type": "menu_action", "name": "打开",
+                 "func": lambda f: open_file_or_folder(f)},
+                {"type": "menu_action", "name": "保存",
+                 "func": self.right_click_menu_save_file},
+            ],
+            open_on_default=[]
+        )
 
 
         # self.worker.custom_after_upload_signal.connect(self.custom_after_upload)
         # self.result_table_wrapper = TableWidgetWrapper(self.result_table)
         # self.result_detail_info_button.clicked.connect(self.show_result_detail_info)
         # # self.preview_result_button.clicked.connect(self.preview_result)
-        # self.download_result_button.clicked.connect(self.download_result)
+        self.download_result_button.clicked.connect(self.download_result)
         # self.view_result_button.clicked.connect(self.view_result)
+
+    def right_click_menu_save_file(self, path):
+        save_to = self.download_file_modal(get_file_name_with_extension(path))
+        if save_to:
+            copy_file(path, save_to)
+            self.modal(level="info", msg="✅下载成功")
+
+    def right_click_menu_preview_file(self, path):  #  TODO
+        pass
 
     def register_worker(self):
         return Worker()
 
-    def main_drag_drop_event(self, file_names):
-        if len(file_names) > 1 or len(self.main_tables_wrapper.get_data_as_df()) > 0:
-            return self.modal(level="warn", msg="目前仅支持一张主表")
-        self.add_table(file_names, "main")
+    def docs_drag_drop_event(self, file_paths):
+        self.add_doc(file_paths)
 
-    def docs_drag_drop_event(self, file_names):
-        self.add_doc(file_names)
-
-    # @set_error_wrapper
-    # def add_main_table(self, *args, **kwargs):
-    #     if len(self.main_tables_wrapper.get_data_as_df()) > 0:
-    #         return self.modal(level="warn", msg="目前仅支持一张主表")
-    #     # 上传文件
-    #     file_names = self.upload_file_modal(["Excel Files", "*.xls*"], multi=False)
-    #     if not file_names:
-    #         return
-    #     self.add_table(file_names, "main")
-    #
     @set_error_wrapper
     def add_docs(self, *args, **kwargs):
         # 上传文件
-        file_names = self.upload_file_modal(["Word Files", "*.docx"], multi=True)
-        if not file_names:
+        file_paths = self.upload_file_modal(["Word Files", "*.docx"], multi=True)
+        if not file_paths:
             return
-        self.add_doc(file_names)
+        self.add_doc(file_paths)
     #
     # @set_error_wrapper
     # def reset_all(self, *args, **kwargs):
@@ -444,12 +446,12 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     #
     # 上传文件的核心函数（调用worker）
     @set_error_wrapper
-    def add_doc(self, file_names):
-        if isinstance(file_names, str):
-            file_names = [file_names]
+    def add_doc(self, file_paths):
+        if isinstance(file_paths, str):
+            file_paths = [file_paths]
 
-        for file_name in file_names:
-            if not file_name.endswith(".docx"):
+        for file_path in file_paths:
+            if not file_path.endswith(".docx"):
                 return self.modal(level="warn", msg="仅支持docx文件")
 
         table_wrapper = self.docs_tables_wrapper
@@ -457,8 +459,8 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # 读取文件进行上传
         params = {
             "stage": "upload",  # 第一阶段
-            "file_names": file_names,  # 上传的所有文件名
-            "table_wrapper": table_wrapper,  # main_table_wrapper 或者 help_table_wrapper
+            "file_paths": file_paths,  # 上传的所有路径名
+            "table_wrapper": table_wrapper,
         }
         self.worker.add_params(params).start()
         self.tip_loading.set_titles(["上传文件.", "上传文件..", "上传文件..."]).show()
@@ -467,29 +469,19 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     @set_error_wrapper
     def custom_after_upload(self, upload_result):
         # pages = upload_result.get("pages")
-        file_names = upload_result.get("file_names")
-        base_name_list = upload_result.get("base_name_list")
-        table_wrapper = upload_result.get("table_wrapper")
+        file_details: typing.List[FileDetail] = upload_result.get("file_details")
         status_msg = upload_result.get("status_msg")
-        for (file_name, base_name) in zip(file_names, base_name_list):  # 辅助表可以一次传多个，主表目前只有一个
-            table_wrapper.add_rich_widget_row([
+        for file_detail in file_details:  # 辅助表可以一次传多个，主表目前只有一个
+            self.docs_tables_wrapper.add_rich_widget_row([
                 {
-                    "type": "readonly_text",  # editable_text
-                    "value": base_name,
+                    "type": "readonly_text",  # 文件名
+                    "value": file_detail.name_without_extension,
                 }, {
-                    "type": "readonly_text",  # editable_text
-                    "value": "-1",
-                # }, {
-                #     "type": "dropdown",
-                #     "values": sheet_names,
-                #     "cur_index": 0,
-                # }, {
-                #     "type": "dropdown",
-                #     "values": row_num_for_columns,
-                #     "cur_index": 0,
-                    # }, {
-                    #     "type": "global_radio",
-                    #     "value": is_main_table,
+                    "type": "readonly_text",  # 文件大小
+                    "value": str(file_detail.size_format),
+                }, {
+                    "type": "readonly_text",  # 修改时间
+                    "value": str(file_detail.updated_at),
                 }, {
                     "type": "button_group",
                     "values": [
@@ -508,7 +500,7 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
 
                 }, {
                     "type": "readonly_text",
-                    "value": file_name,
+                    "value": file_detail.path,
                 },
 
             ])
@@ -547,183 +539,6 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     #     self.tip_loading.hide()
     #     self.set_status_text(status_msg)
     #     self.table_modal(df, size=(400, 200))
-    #
-    # @set_error_wrapper
-    # def get_df_by_row_index(self, row_index, table_type, nrows=None, *args, **kwargs):
-    #     df_config = self.get_df_config_by_row_index(row_index, table_type)
-    #     df_config["nrows"] = nrows
-    #     return read_excel_file_with_multiprocessing([df_config])[0]
-    #
-    # @set_error_wrapper
-    # def get_df_config_by_row_index(self, row_index, table_type, *args, **kwargs):
-    #     if table_type == "main":
-    #         table_wrapper = self.main_tables_wrapper
-    #     else:
-    #         table_wrapper = self.help_tables_wrapper
-    #     path = table_wrapper.get_cell_value(row_index, 4)
-    #     sheet_name = table_wrapper.get_cell_value(row_index, 1)  # 工作表
-    #     row_num_for_column = table_wrapper.get_cell_value(row_index, 2)  # 列所在行
-    #     return {
-    #         "path": path,
-    #         "sheet_name": sheet_name,
-    #         "row_num_for_column": row_num_for_column,
-    #     }
-    #
-    @set_error_wrapper
-    def add_action(self, *args, **kwargs):
-        """
-        顺序 ｜ 类型 ｜ 动作 ｜ 动作内容 ｜ 操作按钮
-        :return:
-        """
-        action_type = self.add_action_combo.currentText()  #  定位 | 选择 | 修改 | 合并
-        action_type_obj = ACTION_MAPPING.get(action_type, {})
-
-        self.actions_table_wrapper.add_rich_widget_row([
-                {
-                    "type": "readonly_text",
-                    "value": action_type,  # 类型
-                }, {
-                    "type": "dropdown",
-                    "values": [i.get("name") for i in action_type_obj.get("children")],  # 可选的动作
-                }, {
-                    "type": "editable_txt",  # 动作内容
-                    "value": "",
-                }, {
-                    "type": "button_group",
-                    "values": [
-                        # {
-                        #     "value": "向上移动",
-                        #     "onclick": lambda row_index, col_index, row: self.actions_table_wrapper.swap_rows(
-                        #         row_index, row_index+1),
-                        # },
-                        # {
-                        #     "value": "向下移动",
-                        #     "onclick": lambda row_index, col_index, row: self.actions_table_wrapper.swap_rows(
-                        #         row_index, row_index-1),
-                        # },
-                        {
-                            "value": "删除",
-                            "onclick": lambda row_index, col_index, row: self.actions_table_wrapper.delete_row(
-                                row_index),
-                        },
-                    ],
-                }
-            ])
-
-    # @set_error_wrapper
-    # def custom_after_add_condition(self, add_condition_result):
-    #     status_msg = add_condition_result.get("status_msg")
-    #     df_main_columns = add_condition_result.get("df_main_columns")
-    #     table_name = add_condition_result.get("table_name")
-    #     df_help_columns = add_condition_result.get("df_help_columns")
-    #
-    #     # 获取上一个条件的主表匹配列
-    #     default_main_col_index = None
-    #     if self.conditions_table_wrapper.row_length() > 0:
-    #         default_main_col = self.conditions_table_wrapper.get_cell_value(
-    #             self.conditions_table_wrapper.row_length() - 1, 0)
-    #         if default_main_col in df_main_columns:
-    #             default_main_col_index = df_main_columns.index(default_main_col)
-    #
-    #     # 构造级连选项
-    #     # first_as_none = {"label": "***不从辅助表增加列***"}
-    #     cascader_options = [{"label": NO_CATCH_COLS_OPTION}]
-    #     for option in df_help_columns:
-    #         column_option = {"label": option, "children": [
-    #             {"label": ADD_COL_OPTION},
-    #             {"label": MAKEUP_MAIN_COL, "children": [
-    #                 {"label": main_label} for main_label in df_main_columns
-    #             ]}
-    #         ]}
-    #         cascader_options.append(column_option)
-    #     self.conditions_table_wrapper.add_rich_widget_row([
-    #         {
-    #             "type": "dropdown",
-    #             "values": df_main_columns,  # 主表匹配列
-    #             "cur_index": default_main_col_index if default_main_col_index is not None else 0,
-    #         }, {
-    #             "type": "readonly_text",
-    #             "value": table_name,  # 辅助表
-    #         }, {
-    #             "type": "dropdown",
-    #             "values": df_help_columns,  # 辅助表匹配列
-    #         }, {
-    #             "type": "dropdown",
-    #             "values": [IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN],  # 重复值策略
-    #             "cur_index": 1,  # 默认只忽略所有中英文标点符号
-    #             "options": {
-    #                 "multi": True,
-    #                 "bg_colors": [COLOR_YELLOW] + [None] * 4,
-    #                 "first_as_none": True,
-    #             }
-    #             # }, {
-    #             #     "type": "dropdown",
-    #             #     "values": ["***不从辅助表增加列***", *df_help_columns],  # 列：从辅助表增加
-    #             #     "options": {
-    #             #         "multi": True,
-    #             #         "bg_colors": [COLOR_YELLOW] + [None] * len(df_help_columns),
-    #             #         "first_as_none": True,
-    #             #     }
-    #
-    #         }, {
-    #             "type": "dropdown",
-    #             "values": cascader_options,  # 列：从辅助表增加
-    #             "cur_index": [0],
-    #             "options": {
-    #                 "cascader": True,
-    #                 # "bg_colors": [COLOR_YELLOW] + [None] * len(df_help_columns),
-    #                 "first_as_none": True,
-    #             }
-    #
-    #         }, {
-    #             "type": "editable_text",  # 列：匹配情况
-    #             "value": " ｜ ".join(MATCH_OPTIONS),
-    #         }, {
-    #             "type": "readonly_text",  # 列：系统匹配到的行数
-    #             "value": "匹配到的行数",
-    #         }, {
-    #             "type": "dropdown",
-    #             "values": ["***不删除行***", *MATCH_OPTIONS],
-    #             "options": {
-    #                 "multi": True,
-    #                 "first_as_none": True,
-    #             }
-    #         }, {
-    #             "type": "button_group",
-    #             "values": [
-    #                 {
-    #                     "value": "删除",
-    #                     "onclick": lambda row_index, col_index, row: self.conditions_table_wrapper.delete_row(
-    #                         row_index),
-    #                 },
-    #             ],
-    #
-    #         }
-    #     ])
-    #     self.tip_loading.hide()
-    #     self.set_status_text(status_msg)
-    #
-    # @set_error_wrapper
-    # def check_table_condition(self, row_index, row, *args, **kwargs):
-    #     df_main = self.get_df_by_row_index(0, "main")
-    #     df_help = self.get_df_by_row_index(row_index, "help")
-    #     main_col = row["主表匹配列"]
-    #     help_col = row["辅助表匹配列"]
-    #
-    #     duplicate_info = check_match_table(df_main, [{
-    #         "df": df_help,
-    #         "match_cols": [{
-    #             "main_col": main_col,
-    #             "match_col": help_col,
-    #         }],
-    #     }])
-    #     if duplicate_info:
-    #         dup_values = ", ".join([str(i.get("duplicate_cols", {}).get("cell_values", [])[0]) for i in duplicate_info])
-    #         msg = "列：{}\t重复值{}".format(help_col, dup_values)
-    #         self.modal("warn", f"经过检查辅助表存在重复: \n{msg}")
-    #     else:
-    #         self.modal("info", "检查通过，辅助表不存在重复")
-    #
     @set_error_wrapper
     def run(self, *args, **kwargs):
         df_docs = self.docs_tables_wrapper.get_data_as_df()
@@ -732,6 +547,11 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         df_actions = self.actions_table_wrapper.get_data_as_df()
         if len(df_actions) == 0:
             return self.modal(level="warn", msg="请先添加动作流")
+
+        if has_content_in_scene_folder():
+            ok_or_not = self.modal(level="check_yes", msg=f"当前操作空间有上次执行的结果，是否继续（选择是，会清空之前的执行结果）", default="yes")
+            if ok_or_not:
+                cleanup_scene_folder()
 
         params = {
             "stage": "run",  # run
@@ -759,6 +579,7 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         self.result_detail_text.setText(tip)
         self.tip_loading.hide()
         self.set_status_text(status_msg)
+        self.tree_file_wrapper.force_refresh()
         return self.modal(level="info", msg=f"✅文档处理成功，共耗时：{duration}秒")
 
     @set_error_wrapper
@@ -822,24 +643,9 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     #
     @set_error_wrapper
     def download_result(self, *args, **kwargs):
-        if not self.detail_match_info:
-            return self.modal(level="warn", msg="请先执行")
-        file_path = self.download_file_modal(f"{TimeObj().time_str}_匹配结果.xlsx")
-        params = {
-            "stage": "download",
-            "file_path": file_path,
-            "include_detail_checkbox": self.include_detail_checkbox,
-            "overall_match_info": self.overall_match_info,
-            "detail_match_info": self.detail_match_info,
-            "result_table_wrapper": self.result_table_wrapper,
-            "even_cols_index": self.even_cols_index,
-            "odd_cols_index": self.odd_cols_index,
-            "overall_cols_index": self.overall_cols_index,
+        self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理")
+        self.modal(level="info", msg="✅下载成功")
 
-        }
-        self.worker.add_params(params).start()
-        self.tip_loading.set_titles(["合成Excel文件并下载.", "合成Excel文件并下载..", "合成Excel文件并下载..."]).show()
-    #
     # @set_error_wrapper
     # def custom_after_download(self, after_download_result):
     #     status_msg = after_download_result.get("status_msg")

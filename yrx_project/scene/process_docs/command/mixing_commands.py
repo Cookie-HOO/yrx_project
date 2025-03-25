@@ -1,6 +1,6 @@
 import os
 
-from yrx_project.scene.docs_processor.base import Command, ActionContext
+from yrx_project.scene.process_docs.base import Command, ActionContext
 
 
 class MergeDocumentsCommand(Command):

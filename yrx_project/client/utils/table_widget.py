@@ -291,6 +291,7 @@ class TableWidgetWrapper:
             for j in range(self.table_widget.columnCount()):
                 self.table_widget.setItem(i, j, QTableWidgetItem(""))
 
+    # TODO: 上下交换的方法，在有widget的时候会报错，SIGSEGV 错误，暂时不好解决，可以通过同时记录所有表格内容，交换时彻底生成新内容解决
     def swap_rows(self, row1, row2):
         """交换指定的两行（包含所有列的内容和控件）"""
         # 边界检查
@@ -303,7 +304,7 @@ class TableWidgetWrapper:
             return
 
         # 遍历所有列（修正列遍历范围）
-        for col in range(self.table_widget.columnCount()-1):  # 不交换最后一列
+        for col in range(self.table_widget.columnCount()):  # 不交换最后一列
             # 交换 QTableWidgetItem
             item1 = self.table_widget.takeItem(row1, col)
             item2 = self.table_widget.takeItem(row2, col)

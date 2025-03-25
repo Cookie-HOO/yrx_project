@@ -1,10 +1,10 @@
-from yrx_project.scene.docs_processor.base import Command, ActionContext
+from yrx_project.scene.process_docs.base import Command, ActionContext
 
 
 class SearchTextCommand(Command):
-    def __init__(self, content, pointer_after_search, **kwargs):
+    def __init__(self, pointer_after_search=None, **kwargs):
         super(SearchTextCommand, self).__init__(**kwargs)
-        self.pointer_after_search = pointer_after_search  # "before" or "after"
+        self.pointer_after_search = pointer_after_search  # "left" or "right" or None
 
     def office_word_run(self, context: ActionContext):
         selection = context.selection
@@ -13,12 +13,21 @@ class SearchTextCommand(Command):
         find.Text = self.content
         found = find.Execute()
 
+        if not found:
+            return
+
+        # 搜到了的情况下
+        # 1. 不设置光标，直接选中
+        if self.pointer_after_search is None:  # 直接选中
+            selection.Select()  # 选择找到的第一个匹配项
+            return
+
+        # 2. 说明搜索完还要移动
         from win32com.client import constants
-        if found and self.pointer_after_search == "after":
+        if self.pointer_after_search == "right":
             selection.Collapse(Direction=constants.wdCollapseEnd)
-        elif found and self.pointer_after_search == "before":
+        elif self.pointer_after_search == "left":
             selection.Collapse(Direction=constants.wdCollapseStart)
-        return found
 
 
 class MoveCursorCommand(Command):
@@ -35,21 +44,22 @@ class MoveCursorCommand(Command):
         'paragraph': 4  # wdParagraph
     }
 
-    DIRECTION_MAPPING = {
-        'up': 'line',
-        'down': 'line',
-        'left': 'character',
-        'right': 'character'
-    }
+    # DIRECTION_MAPPING = {
+    #     'up': 'line',
+    #     'down': 'line',
+    #     'left': 'character',
+    #     'right': 'character'
+    # }
 
-    def __init__(self, direction, **kwargs):
+    def __init__(self, unit, direction, **kwargs):
         super(MoveCursorCommand, self).__init__(**kwargs)
         self.direction = direction.lower()
-        self.unit_type = self.DIRECTION_MAPPING.get(self.direction)
+        self.unit = unit
+        # self.unit_type = self.DIRECTION_MAPPING.get(self.direction)
 
     def office_word_run(self, context: ActionContext):
         # 获取正确的Unit类型
-        unit = self.UNIT_TYPES.get(self.unit_type)  # 默认按行
+        unit = self.UNIT_TYPES.get(self.unit)  # 默认按行
 
         # 获取对应的方法
         method_name = self.DIRECTION_METHODS.get(self.direction)

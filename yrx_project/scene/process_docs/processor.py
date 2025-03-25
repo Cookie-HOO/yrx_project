@@ -1,7 +1,7 @@
 import os
 
-from yrx_project.scene.docs_processor.base import ActionContext, CommandManager
-from yrx_project.scene.docs_processor.action_types import action_types
+from yrx_project.scene.process_docs.base import ActionContext, CommandManager
+from yrx_project.scene.process_docs.action_types import action_types
 from yrx_project.utils.file import get_file_name_with_extension, copy_file
 
 
@@ -122,13 +122,13 @@ if __name__ == '__main__':
     #
 
     ActionProcessor([
-        # {'action_id': 'search_first_after', 'action_params': {'content': '教授', 'inputs': [r'D:/Projects/yrx_project/test.docx'], 'output': r'D:\Projects\yrx_project\tmp.docx'}},
-        # {'action_id': 'move_down', 'action_params': {'content': '1', 'inputs': [r'D:/Projects/yrx_project/test.docx'], 'output': r'D:\Projects\yrx_project\tmp.docx'}},
-        # {'action_id': 'select_current_cell',  'action_params': {'content': '', 'inputs': [r'D:/Projects/yrx_project/test.docx'], 'output': r'D:\Projects\yrx_project\tmp.docx'}},
-        # {'action_id': 'replace_text', 'action_params': {'content': '撒扩大飞机阿萨', 'inputs': [r'D:/Projects/yrx_project/test.docx'], 'output': r'D:\Projects\yrx_project\tmp.docx'}}
-        {'action_id': 'merge_docs', 'action_params': {'content': '撒扩大飞机阿萨'}}
+        {'action_id': 'search_first_and_select', 'action_params': {'content': '职务'}},
+        {'action_id': 'move_right', 'action_params': {'content': '1'}},
+        {'action_id': 'select_current',  'action_params': {'content': '单元格', }},
+        {'action_id': 'replace_text', 'action_params': {'content': 'sadfasdfsdaf'}}
+        # {'action_id': 'merge_docs', 'action_params': {'content': '撒扩大飞机阿萨'}}
     ]).process(file_paths=[
         r"D:\Projects\yrx_project\test1.docx",
-        r"D:\Projects\yrx_project\test2.docx",
-        r"D:\Projects\yrx_project\test3.docx",
+        # r"D:\Projects\yrx_project\test2.docx",
+        # r"D:\Projects\yrx_project\test3.docx",
     ])

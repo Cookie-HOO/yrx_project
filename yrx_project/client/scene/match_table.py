@@ -13,7 +13,7 @@ from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.scene.match_table.const import *
 from yrx_project.scene.match_table.main import *
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
-from yrx_project.utils.file import get_file_name_without_extension, make_zip, copy_file, open_file_or_folder_in_browser
+from yrx_project.utils.file import get_file_name_without_extension, make_zip, copy_file, open_file_or_folder
 from yrx_project.utils.iter_util import find_repeat_items
 from yrx_project.utils.string_util import IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN
 from yrx_project.utils.time_obj import TimeObj
@@ -1029,8 +1029,8 @@ v1.0.5
             # QMessageBox.DestructiveRole | QMessageBox.HelpRole | QMessageBox.YesRole | QMessageBox.NoRole
             # QMessageBox.ResetRole | QMessageBox.ApplyRole
 
-            {"text": "打开所在文件夹", "func": lambda: open_file_or_folder_in_browser(os.path.dirname(file_path)), "role": QMessageBox.ActionRole},
-            {"text": "打开文件", "func": lambda: open_file_or_folder_in_browser(file_path), "role": QMessageBox.ActionRole},
+            {"text": "打开所在文件夹", "func": lambda: open_file_or_folder(os.path.dirname(file_path)), "role": QMessageBox.ActionRole},
+            {"text": "打开文件", "func": lambda: open_file_or_folder(file_path), "role": QMessageBox.ActionRole},
         ])
 
 

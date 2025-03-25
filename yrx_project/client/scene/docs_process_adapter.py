@@ -1,9 +1,12 @@
+import os
+import shutil
 from multiprocessing import cpu_count, Pool
 
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
-from yrx_project.scene.docs_processor.base import ActionContext, ACTION_TYPE_MAPPING
-from yrx_project.scene.docs_processor.action_types import action_types
-from yrx_project.scene.docs_processor.processor import ActionProcessor
+from yrx_project.scene.process_docs.base import ActionContext, ACTION_TYPE_MAPPING
+from yrx_project.scene.process_docs.action_types import action_types
+from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
+from yrx_project.scene.process_docs.processor import ActionProcessor
 
 
 # 获取指定的doc的页数
@@ -123,32 +126,53 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
                             "type": ui_type,  # 动作内容
                             "value": value,
                         }, {
-                            "type": "readonly_text",  # __动作id
-                            "value": action_id,
-                        }, {
                             "type": "button_group",
                             "values": [
-                                {
-                                    "value": "向下",
-                                    "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
-                                        row_index, row_index+1),
-                                },
-                                {
-                                    "value": "向上",
-                                    "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
-                                        row_index, row_index-1),
-                                },
+                                # {
+                                #     "value": "向下",
+                                #     "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
+                                #         row_index, row_index+1),
+                                # },
+                                # {
+                                #     "value": "向上",
+                                #     "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
+                                #         row_index, row_index-1),
+                                # },
                                 {
                                     "value": "删除",
                                     "onclick": lambda row_index, col_index, row_: table_wrapper.delete_row(
                                         row_index),
                                 },
                             ],
-                        }
+                        }, {
+                            "type": "readonly_text",  # __动作id
+                            "value": action_id,
+                        },
                     ])
                 })
         menu_list.append({"type": "menu", "name": action_type_name, "children": children})
     return menu_list
+
+
+def cleanup_scene_folder():
+    if os.path.exists(SCENE_TEMP_PATH):
+        shutil.rmtree(SCENE_TEMP_PATH)
+    os.makedirs(SCENE_TEMP_PATH)
+
+
+def has_content_in_scene_folder():
+    if os.path.exists(SCENE_TEMP_PATH):
+        if os.listdir(SCENE_TEMP_PATH):
+            return True
+    return False
+
+
+ACTION_SUIT = {
+    "政审处理": [
+        {"action_id": "", "params": {}}
+    ]
+}
+
 
 if __name__ == '__main__':
     ActionProcessor([

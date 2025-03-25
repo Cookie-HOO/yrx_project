@@ -4,15 +4,16 @@ import typing
 from multiprocessing import Lock
 
 from yrx_project.const import TEMP_PATH
-
+from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
 
 MIXING_TYPE_ID = "mixing"
 
 ACTION_TYPE_MAPPING = {
-    "locate": "定位",
-    "select": "选择",
-    "update": "修改",
-    MIXING_TYPE_ID: "混合",
+    "locate": "定位光标",
+    "insert": "光标位置插入",
+    "select": "选择内容",
+    "update": "修改选中内容",
+    MIXING_TYPE_ID: "混合文档",
 }
 
 
@@ -77,9 +78,10 @@ class CommandContainer:
     def __init__(self):
         self.step = ""  # 在manager中，是排第几，从1开始
         self.commands = []
-        self.commands_num = len(self.commands)
-        self.output_folder = ""
-        self.step_and_name = ""
+
+    @property
+    def commands_num(self):
+        return len(self.commands)
 
     def add_command(self, command: Command):
         self.commands.append(command)
@@ -95,19 +97,34 @@ class CommandContainer:
     def is_mixing(self):
         return isinstance(self, MixingCommandContainer)
 
+    @property
+    def output_folder(self):
+        return ""
+
+    @property
+    def step_and_name(self):
+        return ""
+
 
 class BatchCommandContainer(CommandContainer):
-    def __init__(self):
-        super(BatchCommandContainer, self).__init__()
-        self.output_folder = os.path.join(TEMP_PATH, f"{self.step}-batch")
-        self.step_and_name = f"{self.step}-批处理"
+    @property
+    def output_folder(self):
+        return os.path.join(SCENE_TEMP_PATH, f"{self.step}-batch")
+
+    @property
+    def step_and_name(self):
+        return f"{self.step}-批处理"
 
 
 class MixingCommandContainer(CommandContainer):
-    def __init__(self):
-        super(MixingCommandContainer, self).__init__()
-        self.output_folder = os.path.join(TEMP_PATH, f"{self.step}-mixing")
-        self.step_and_name = f"{self.step}-混合处理"
+
+    @property
+    def output_folder(self):
+        return os.path.join(SCENE_TEMP_PATH, f"{self.step}-mixing")
+
+    @property
+    def step_and_name(self):
+        return f"{self.step}-混合处理"
 
 
 class CommandManager:

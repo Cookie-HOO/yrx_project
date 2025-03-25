@@ -3,7 +3,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow
 
 from yrx_project.client.const import UI_PATH, STATIC_FILE_PATH
-from yrx_project.client.scene.docs_processor import MyDocsProcessorClient
+from yrx_project.client.scene.docs_process import MyDocsProcessorClient
 from yrx_project.client.scene.match_table import MyTableMatchClient
 from yrx_project.client.scene.merged_cell import MyMergedCellClient
 
