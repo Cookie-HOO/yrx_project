@@ -1,5 +1,3 @@
-from win32com.client import constants
-
 from yrx_project.scene.docs_processor.base import Command, ActionContext
 
 
@@ -15,6 +13,7 @@ class SearchTextCommand(Command):
         find.Text = self.content
         found = find.Execute()
 
+        from win32com.client import constants
         if found and self.pointer_after_search == "after":
             selection.Collapse(Direction=constants.wdCollapseEnd)
         elif found and self.pointer_after_search == "before":
@@ -59,4 +58,4 @@ class MoveCursorCommand(Command):
 
         # 执行移动操作
         method = getattr(context.selection, method_name)
-        method(Unit=unit, Count=self.content)
+        method(Unit=unit, Count=int(self.content))

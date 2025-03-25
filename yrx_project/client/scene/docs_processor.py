@@ -1,5 +1,6 @@
 import os
 import time
+import typing
 
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal
@@ -9,6 +10,7 @@ from yrx_project.client.const import UI_PATH
 from yrx_project.client.utils.button_menu_widget import ButtonMenuWrapper
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.const import PROJECT_PATH
+from yrx_project.scene.docs_processor.base import ActionContext
 from yrx_project.scene.docs_processor.const import ACTION_MAPPING
 from yrx_project.client.scene.docs_processor_adapter import run_with_actions, build_action_types_menu
 from yrx_project.utils.file import get_file_name_without_extension
@@ -71,29 +73,7 @@ class Worker(BaseWorker):
                 "df": dfs[0],
                 "status_msg": status_msg
             })
-        elif stage == "add_condition":  # 任务处在上传添加条件的阶段
-            self.refresh_signal.emit(
-                f"添加条件中..."
-            )
-            start_add_condition_time = time.time()
 
-            df_main_config = self.get_param("df_main_config")
-            df_help_config = self.get_param("df_help_config")
-            help_tables_wrapper = self.get_param("help_tables_wrapper")
-            conditions_table_wrapper = self.get_param("conditions_table_wrapper")
-            table_name = help_tables_wrapper.get_data_as_df()["表名"][conditions_table_wrapper.row_length()]
-
-            df_main_columns, df_help_columns = read_excel_file_with_multiprocessing([
-                df_main_config, df_help_config
-            ], only_column_name=True)
-
-            status_msg = f"✅添加一行条件成功，共耗时：{round(time.time() - start_add_condition_time, 2)}s："
-            self.custom_after_add_condition_signal.emit({
-                "df_main_columns": df_main_columns,
-                "df_help_columns": df_help_columns,
-                "status_msg": status_msg,
-                "table_name": table_name,
-            })
         elif stage == "run":  # 任务处在执行的阶段
             self.refresh_signal.emit(
                 f"文档处理中..."
@@ -108,12 +88,16 @@ class Worker(BaseWorker):
 
             df_docs = self.get_param("df_docs")
             df_actions = self.get_param("df_actions")
+
+            def callback(ctx: ActionContext):
+                file_name = "--"
+                if ctx.file_path:
+                    file_name = get_file_name_without_extension(ctx.file_path)
+                self.refresh_signal.emit(f"文档处理中...阶段: {ctx.command_container.step_and_name} 进度：{ctx.done_task_num}/{ctx.total_task_num}; 文件: {file_name}: 操作: {ctx.command.action_name}")
             run_with_actions(
                 input_paths=df_docs["__文档路径"].to_list(),
                 df_actions=df_actions,
-                output_path=os.path.join(PROJECT_PATH, "tmp.docx"),
-                after_each_action_func=lambda c: self.refresh_signal.emit(f"文档处理中...文件: {c.done}/{c.total_task}; 操作: {c.current_task}"),
-
+                after_each_action_func=callback,
             )
 
             # 设置执行信息
@@ -121,7 +105,7 @@ class Worker(BaseWorker):
             tip = f"✅执行成功"
 
             status_msg = \
-                f"✅执行表匹配成功，共耗时：{duration}秒"
+                f"✅批量文档处理成功，共耗时：{duration}秒"
 
             self.custom_after_run_signal.emit({
                 "tip": tip,
@@ -147,7 +131,6 @@ class Worker(BaseWorker):
                     odd_index=odd, even_index=even, last_index=last_two, main_col_map=main_col_map, col_index=col_index, row_index=row_index
                 )
             )
-
             duration = round((time.time() - start_view_result), 2)
             status_msg = f"✅生成放大结果成功，共耗时：{duration}秒"
             self.custom_view_result_signal.emit({
@@ -510,24 +493,8 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
 
     @set_error_wrapper
     def delete_table_row(self, row_index, table_type, *args, **kwargs):
+        self.docs_tables_wrapper.delete_row(row_index)
 
-        if table_type == "docs":
-            self.docs_tables_wrapper.delete_row(row_index)
-        # else:
-        #     table_name = self.help_tables_wrapper.get_values_by_row_index(row_index).get("表名")
-        #     condition_df = self.conditions_table_wrapper.get_data_as_df()
-        #     help_table_col = condition_df['辅助表名']
-        #
-        #     # 如果没有相关条件，直接删除
-        #     if table_name not in help_table_col.values:
-        #         self.help_tables_wrapper.delete_row(row_index)
-        #     # 如果在条件表中有相关条件，提示是否一并删除
-        #     else:
-        #         ok_or_not = self.modal(level="check_yes", msg=f"删除后，存在关联条件，是否确认删除？", default="yes")
-        #         if ok_or_not:
-        #             row_index_in_condition = condition_df[help_table_col == table_name].index
-        #             self.conditions_table_wrapper.delete_row(row_index_in_condition[0])
-        #             self.help_tables_wrapper.delete_row(row_index)
 
     # # 预览上传文件（调用worker）
     # @set_error_wrapper

@@ -20,3 +20,9 @@ COLOR_STR_RED = "🟥"
 COLOR_STR_YELLOW = "🟨"
 COLOR_STR_GREEN = "🟩"
 COLOR_STR_BLUE = "🟦"
+
+# item type
+EDITABLE_TEXT = "editable_text"
+READONLY_TEXT = "readonly_text"
+DROPDOWN = "dropdown"
+

@@ -1,6 +1,5 @@
 import os
 
-from yrx_project.const import PROJECT_PATH
 from yrx_project.scene.docs_processor.base import Command, ActionContext
 
 
@@ -34,9 +33,10 @@ class MergeDocumentsCommand(Command):
                 range_obj.End = new_doc.Content.End
 
             # 保存合并后的文档
-            output_path = os.path.join(PROJECT_PATH, "merged", "merged.docx")
+            output_path = os.path.join(f"{context.command_container.output_folder}",
+                                       f"{context.command.action_name}.docx")
             new_doc.SaveAs(os.path.abspath(output_path))
-            return new_doc
+            context.input_paths = [output_path]
 
         finally:
             new_doc.Close()

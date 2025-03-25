@@ -1,5 +1,3 @@
-from win32com.client import constants
-
 from yrx_project.scene.docs_processor.base import Command, ActionContext
 
 
@@ -10,6 +8,7 @@ class SelectCurrentCommand(Command):
 
     def office_word_run(self, context: ActionContext):
         selection = context.selection
+        from win32com.client import constants
         if self.current == "cell" and selection.Information(constants.wdWithInTable):
             cell = selection.Cells(1)
             context.selected_range = cell.Range

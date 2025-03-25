@@ -342,7 +342,7 @@ class TableWidgetWrapper:
                 item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)
                 self.table_widget.setItem(nex_row_index, col_index, item)
             elif cell_type == "dropdown":
-                values = cell.get("values")
+                values = cell.get("values") or cell.get("value")  # 兼容values
                 font_colors = cell_options.get("font_colors") or cell_options.get("colors")
                 bg_colors = cell_options.get("bg_colors")
                 if cell_options.get("multi"):
