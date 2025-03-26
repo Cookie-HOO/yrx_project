@@ -1,5 +1,3 @@
-from win32com.client import constants
-
 from yrx_project.scene.process_docs.base import Command, ActionContext
 
 
@@ -67,38 +65,33 @@ class UpdateFontColorCommand(Command):
 
 
 class UpdateParagraphCommand(Command):
-    ALIGN_MAP = {
-        "左对齐": constants.wdAlignParagraphLeft,
-        "居中": constants.wdAlignParagraphCenter,
-        "右对齐": constants.wdAlignParagraphRight,
-        "两端对齐": constants.wdAlignParagraphJustify
-    }
-
     def __init__(self, attribute, line_spacing_type=None, **kwargs):
         super(UpdateParagraphCommand, self).__init__(**kwargs)
         self.attribute = attribute
         self.line_spacing_type = line_spacing_type
 
     def office_word_run(self, context: ActionContext):
+        ALIGN_MAP = context.const.get("ALIGN_MAP")
         # 行距设置
         if self.attribute == "line_spacing":
             self._set_line_spacing(context)
 
         # 对齐设置
-        elif self.attribute == "alignment" and self.content in self.ALIGN_MAP:
-            context.selection.ParagraphFormat.Alignment = self.ALIGN_MAP[self.content]
+        elif self.attribute == "alignment" and self.content in ALIGN_MAP:
+            context.selection.ParagraphFormat.Alignment = ALIGN_MAP[self.content]
 
     def _set_line_spacing(self, context):
+        ROW_SPACING_MAP = context.const.get("ROW_SPACING_MAP")
         line_type = self.line_spacing_type
         value = float(self.content) if self.content.isdigit() else 1.0
 
         para = context.selection.ParagraphFormat
         if line_type == "times":
-            para.LineSpacingRule = constants.wdLineSpaceMultiple
+            para.LineSpacingRule = ROW_SPACING_MAP.get("倍数行距")
             para.LineSpacing = value
         elif line_type == "min_bounds":
-            para.LineSpacingRule = constants.wdLineSpaceAtLeast
+            para.LineSpacingRule = ROW_SPACING_MAP.get("最小行距")
             para.LineSpacing = value
         elif line_type == "fix":
-            para.LineSpacingRule = constants.wdLineSpaceExactly
+            para.LineSpacingRule = ROW_SPACING_MAP.get("固定行距")
             para.LineSpacing = value

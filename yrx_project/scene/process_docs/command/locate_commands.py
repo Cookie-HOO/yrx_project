@@ -7,6 +7,7 @@ class SearchTextCommand(Command):
         self.pointer_after_search = pointer_after_search  # "left" or "right" or None
 
     def office_word_run(self, context: ActionContext):
+        COLLAPSE_MAP = context.const.get("COLLAPSE_MAP")
         selection = context.selection
         find = selection.Find
         find.ClearFormatting()
@@ -23,11 +24,10 @@ class SearchTextCommand(Command):
             return
 
         # 2. 说明搜索完还要移动
-        from win32com.client import constants
         if self.pointer_after_search == "right":
-            selection.Collapse(Direction=constants.wdCollapseEnd)
+            selection.Collapse(Direction=COLLAPSE_MAP.get("right"))
         elif self.pointer_after_search == "left":
-            selection.Collapse(Direction=constants.wdCollapseStart)
+            selection.Collapse(Direction=COLLAPSE_MAP.get("left"))
 
 
 class MoveCursorCommand(Command):
@@ -38,18 +38,6 @@ class MoveCursorCommand(Command):
         'right': 'MoveRight'
     }
 
-    UNIT_TYPES = {
-        'line': 5,  # wdLine
-        'character': 1,  # wdCharacter
-        'paragraph': 4  # wdParagraph
-    }
-
-    # DIRECTION_MAPPING = {
-    #     'up': 'line',
-    #     'down': 'line',
-    #     'left': 'character',
-    #     'right': 'character'
-    # }
 
     def __init__(self, unit, direction, **kwargs):
         super(MoveCursorCommand, self).__init__(**kwargs)
@@ -59,7 +47,8 @@ class MoveCursorCommand(Command):
 
     def office_word_run(self, context: ActionContext):
         # 获取正确的Unit类型
-        unit = self.UNIT_TYPES.get(self.unit)  # 默认按行
+        UNIT_TYPES = context.const.get("SCOPE_MAP")
+        unit = UNIT_TYPES.get(self.unit)
 
         # 获取对应的方法
         method_name = self.DIRECTION_METHODS.get(self.direction)
@@ -69,3 +58,7 @@ class MoveCursorCommand(Command):
         # 执行移动操作
         method = getattr(context.selection, method_name)
         method(Unit=unit, Count=int(self.content))
+
+
+class MoveCursorUntilSpecialCommand(Command):
+    pass

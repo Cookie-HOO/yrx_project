@@ -14,7 +14,7 @@ from yrx_project.const import PROJECT_PATH, TEMP_PATH
 from yrx_project.scene.process_docs.base import ActionContext
 from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
 from yrx_project.client.scene.docs_process_adapter import run_with_actions, build_action_types_menu, \
-    cleanup_scene_folder, has_content_in_scene_folder
+    cleanup_scene_folder, has_content_in_scene_folder, build_action_suit_menu
 from yrx_project.utils.file import get_file_name_without_extension, get_file_detail, FileDetail, open_file_or_folder, \
     get_file_name_with_extension, copy_file
 from yrx_project.utils.iter_util import find_repeat_items
@@ -373,12 +373,12 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         #                                               drag_func=self.help_drag_drop_event)  # 上传table之后展示所有table的表格
         #
         # # 2. 添加动作流
-        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 200)
+        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 320)
         self.add_action_button_menu = ButtonMenuWrapper(
             self, self.add_action_button, build_action_types_menu(self.actions_table_wrapper)
         )
         self.action_suit_button_menu = ButtonMenuWrapper(
-            self, self.action_suit_button, build_action_types_menu(self.actions_table_wrapper)
+            self, self.action_suit_button, build_action_suit_menu(self.actions_table_wrapper)
         )
 
         # self.add_action_button.clicked.connect(self.add_action)

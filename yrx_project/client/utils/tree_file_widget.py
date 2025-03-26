@@ -29,6 +29,8 @@ class TreeFileWrapper:
                 [] 表示默认全部打开
                 或者 list 的 path，表示打开的文件夹
         """
+        if not os.path.exists(root_path):
+            return
         self.tree_widget = tree_widget
         self.root_path = os.path.normpath(root_path)  # 标准化路径
         self.on_click = on_click

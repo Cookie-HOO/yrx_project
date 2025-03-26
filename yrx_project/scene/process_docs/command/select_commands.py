@@ -1,5 +1,3 @@
-from win32com.client import constants
-
 from yrx_project.scene.process_docs.base import Command, ActionContext
 
 
@@ -17,49 +15,29 @@ from yrx_project.scene.process_docs.base import Command, ActionContext
 #             context.selected_range = paragraph.Range
 
 class SelectCurrentScopeCommand(Command):
-    SCOPE_MAP = {
-        "行": constants.wdLine,
-        "段落": constants.wdParagraph,
-        "表格单元格": constants.wdCell,
-        "页面": constants.wdPage,
-        "整个文档": constants.wdStory
-    }
 
     def office_word_run(self, context: ActionContext):
-        if self.content in self.SCOPE_MAP:
-            context.selection.Expand(Unit=self.SCOPE_MAP[self.content])
+        SCOPE_MAP = context.const.get("SCOPE_MAP")
+        if self.content in SCOPE_MAP:
+            context.selection.Expand(Unit=SCOPE_MAP[self.content])
 
 
 class SelectRangeCommand(Command):
-    BOUNDARY_CHECKS = {
-        "cell_start": lambda s: s.Information(constants.wdWithInTable),
-        "cell_end": lambda s: s.Information(constants.wdWithInTable),
-        "page_start": lambda s: s.Information(constants.wdActiveEndPageNumber) > 0,
-    }
-    BOUNDARY_ACTIONS = {
-        "line_start": (constants.wdLine, constants.wdMove),
-        "line_end": (constants.wdLine, constants.wdExtend),
-        "cell_start": (constants.wdCell, constants.wdMove),
-        "cell_end": (constants.wdCell, constants.wdExtend),
-        "page_start": (constants.wdPage, constants.wdMove),
-        "page_end": (constants.wdPage, constants.wdExtend),
-        "doc_start": (constants.wdStory, constants.wdMove),
-        "doc_end": (constants.wdStory, constants.wdExtend)
-    }
-
     def __init__(self, boundary, **kwargs):
         super(SelectRangeCommand, self).__init__(**kwargs)
         self.boundary = boundary
 
     def office_word_run(self, context: ActionContext):
-        if not self.boundary or not self.BOUNDARY_CHECKS.get(self.boundary, lambda _: True)(context.selection):
+        BOUNDARY_CHECKS = context.const.get("BOUNDARY_CHECKS")
+        BOUNDARY_ACTIONS = context.const.get("BOUNDARY_ACTIONS")
+        if not self.boundary or not BOUNDARY_CHECKS.get(self.boundary, lambda _: True)(context.selection):
             return
 
         # 表格相关操作检查
         if "cell" in self.boundary and context.selection.Range.Tables.Count == 0:
             return
 
-        action = self.BOUNDARY_ACTIONS.get(self.boundary)
+        action = BOUNDARY_ACTIONS.get(self.boundary)
         if action:
             unit, move_type = action
             context.selection.HomeKey(Unit=unit, Extend=move_type)

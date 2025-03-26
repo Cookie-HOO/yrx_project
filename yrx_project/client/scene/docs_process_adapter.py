@@ -2,6 +2,7 @@ import os
 import shutil
 from multiprocessing import cpu_count, Pool
 
+from yrx_project.client.const import COLOR_YELLOW, DROPDOWN
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.scene.process_docs.base import ActionContext, ACTION_TYPE_MAPPING
 from yrx_project.scene.process_docs.action_types import action_types
@@ -39,7 +40,7 @@ def get_docx_pages_with_multiprocessing(file_paths):
 def run_with_actions(
         input_paths,
         df_actions,
-        after_each_action_func: [[ActionContext], None]=None
+        after_each_action_func: [[ActionContext], None] = None
 ):
     """
     df_actions: 是一个df
@@ -99,7 +100,7 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
     # 按 group_id 分组
     action_type_dfs = df.groupby("action_type_id", sort=False)
     for action_type_id, action_type_df in action_type_dfs:
-        action_type_name = ACTION_TYPE_MAPPING[action_type_id]
+        action_type_name, action_type_tip = ACTION_TYPE_MAPPING[action_type_id]
         children = []
         action_type_group_dfs = action_type_df.groupby("group_id", sort=False)
         for _, action_type_group_df in action_type_group_dfs:
@@ -110,12 +111,15 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
             for _, row in action_type_group_df.iterrows():
                 ui_type = row["action_content_ui"]
                 value = row["action_content_value"]
+                tip = row["action_content_tip"]
                 action_name = row["action_name"]
                 action_id = row["action_id"]
                 children.append({
                     "type": "menu_action",
                     "name": action_name,
-                    "func": lambda _, action_type_name=action_type_name, action_id=action_id, action_name=action_name, ui_type=ui_type,value=value: table_wrapper.add_rich_widget_row([
+                    "tip": tip,
+                    "func": lambda _, action_type_name=action_type_name, action_id=action_id, action_name=action_name,
+                                   ui_type=ui_type, value=value: table_wrapper.add_rich_widget_row([
                         {
                             "type": "readonly_text",
                             "value": action_type_name,  # 类型
@@ -150,8 +154,72 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
                         },
                     ])
                 })
-        menu_list.append({"type": "menu", "name": action_type_name, "children": children})
+        menu_list.append({"type": "menu", "name": action_type_name, "tip": action_type_tip, "children": children})
     return menu_list
+
+
+def build_action_suit_menu(table_wrapper: TableWidgetWrapper):
+    menu_list = []
+    for action_suit_name, actions in ACTION_SUITS.items():
+        menu_list.append({
+            "type": "menu_action",
+            "name": action_suit_name,
+            "func": lambda _, actions=actions: set_table_value(table_wrapper, actions),
+        })
+    return menu_list
+
+def set_table_value(table_wrapper: TableWidgetWrapper, actions):
+    table_wrapper.clear()
+    for action in actions:
+        if not action.get("action_id"):
+            continue  # todo: 这是spliter
+        action_row = action_types.get_action_by_id(action["action_id"])
+        action_type_name, action_type_tip = ACTION_TYPE_MAPPING.get(action_row["action_type_id"])
+        action_content_ui = action_row["action_content_ui"]
+
+        # 下拉选择的话，需要特殊处理，值从action_type中来，设置修改默认值
+        cur_index = None
+        values = None
+        if action_content_ui == DROPDOWN:
+            values = action_row["action_content_value"]
+            cur_index = values.index(action["params"]["content"])
+
+        table_wrapper.add_rich_widget_row([
+                {
+                    "type": "readonly_text",
+                    "value": action_type_name,  # 类型
+                }, {
+                "type": "readonly_text",
+                "value": action_row["action_name"],  # 动作
+            }, {
+                "type": action_row["action_content_ui"],  # 动作内容
+                "value": values or action["params"].get("content") or "---",
+                "cur_index": cur_index,
+            }, {
+                "type": "button_group",
+                "values": [
+                    # {
+                    #     "value": "向下",
+                    #     "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
+                    #         row_index, row_index+1),
+                    # },
+                    # {
+                    #     "value": "向上",
+                    #     "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
+                    #         row_index, row_index-1),
+                    # },
+                    {
+                        "value": "删除",
+                        "onclick": lambda row_index, col_index, row_: table_wrapper.delete_row(
+                            row_index),
+                    },
+                ],
+            }, {
+                "type": "readonly_text",  # __动作id
+                "value": action_row["action_id"],
+            },
+
+        ])
 
 
 def cleanup_scene_folder():
@@ -167,12 +235,38 @@ def has_content_in_scene_folder():
     return False
 
 
-ACTION_SUIT = {
+ACTION_SUITS = {
     "政审处理": [
-        {"action_id": "", "params": {}}
+        {"action_spliter": "1. 修改政审意见", "bg_color": COLOR_YELLOW},
+        # 1. 搜索定位 姓名
+        {"action_id": "search_first_and_move_left", "params": {"content": "姓名"}},
+        # 2. 光标移动
+        {"action_id": "move_right_chars", "params": {"content": 1}},
+        {"action_id": "move_down_lines", "params": {"content": 3}},
+        # 3. 选择
+        {"action_id": "select_current_scope", "params": {"content": "表格单元格"}},
+        # 4. 替换
+        {"action_id": "replace_text", "params": {"content": ""}},
+
+        {"action_spliter": "2. 修改第一部分字体", "bg_color": COLOR_YELLOW},
+        # 5. 选择第一部分
+        {"action_id": "move_prev_to_landmark_only_text", "params": {"content": "当前单元格开头"}},
+        {"action_id": "select_current_scope", "params": {"content": "段落"}},
+        # 6. 修改字体
+        {"action_id": "set_font_family", "params": {"content": "宋体"}},
+        {"action_id": "set_font_size", "params": {"content": "14pt"}},
+
+        {"action_spliter": "3. 修改第二部分字体", "bg_color": COLOR_YELLOW},
+        # 7. 选中第二部分，设置字体
+        {"action_id": "select_next_to_landmark_only_text", "params": {"content": "当前单元格结尾"}},
+        {"action_id": "set_font_family", "params": {"content": "宋体"}},
+        {"action_id": "set_font_size", "params": {"content": "10pt"}},
+
+        # 9. 合并文档
+        {"action_spliter": "4. 合并文档", "bg_color": COLOR_YELLOW},
+        {"action_id": "merge_documents", "params": {}},
     ]
 }
-
 
 if __name__ == '__main__':
     ActionProcessor([

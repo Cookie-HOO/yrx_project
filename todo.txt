@@ -153,17 +153,27 @@ DONE 6. 右键文件进行保存
 DONE 7. 点击下载全部
 GIVEUP 9. 缩略图
 GIVEUP    第一步增加预览按钮
-GIVEUP 11. 操作的上下移动
 DONE 完成相关的功能函数
+DONE ✨✨✨保存好的实现路径
+
+WIN待测试，mac不好使，可能需要自己监听hover事件
+    ✨✨action_types生成menu时增加tip
 
 
 1. 重置按钮
 测试相关的功能函数
 --4. 关闭程序后，清理temp路径（待商榷）
-10. 执行逻辑流程图
-13. 循环和条件的补充
-    当搜索后选择所有搜索结果时
+10. ✨执行逻辑流程图
+13. ✨循环和条件的补充
+    当搜索后选择所有搜索结果时、
+    循环的时候，所有需要循环的用一个别的背景色标识
 14. 工具箱：加载json，查看当前json
-15. 保存好的实现路径
-16. action_types生成menu时增加tip
-17. 颜色可以尝试使用color picker
+17. ✨颜色可以尝试使用color picker
+action操作，支持spliter，具体执行时没有任何作用，但是有颜色作为分割
+✨需要有个地方看执行日志，文件的日志和操作的日志
+测试按钮，点击后是一个弹窗，可以选择输入的文档进行测试，生成的结果在0-test目录下
+    需要每个container 动态接受自己的parent是什么，test的时候，需要将container的parent设置为0-test
+增加光标状态的提示，是否是选择状态
+将action_config(action_id, 和params) 抽象一下，content替换params
+给action_config增加一个转rich_row的函数，可以快速添加到table中
+    GIVEUP 11. 操作的上下移动

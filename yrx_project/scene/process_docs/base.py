@@ -9,11 +9,11 @@ from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
 MIXING_TYPE_ID = "mixing"
 
 ACTION_TYPE_MAPPING = {
-    "locate": "定位光标",
-    "insert": "光标位置插入",
-    "select": "选择内容",
-    "update": "修改选中内容",
-    MIXING_TYPE_ID: "混合文档",
+    "locate": ("定位光标", "定位类操作，涉及搜索和光标移动"),
+    "insert": ("光标位置插入", "插入类操作，如果跟在选择操作后面不起作用"),
+    "select": ("选择内容", "选择类操作，选中一些内容，进行修改"),
+    "update": ("修改选中内容", "修改类操作，修改选中的内容"),
+    MIXING_TYPE_ID: ("混合文档", "混合类操作，输入n个文档，输出m个文档"),
 }
 
 
@@ -45,7 +45,56 @@ class ActionContext:
         self.word = None  # 操作word的对象
         self.lock_task_num = Lock()
         self.lock_file_num = Lock()
+        self.const = self.const_init()
 
+    def const_init(self):
+        from win32com.client import constants
+        return {
+            "SYMBOL_MAP": {
+                "分页符": constants.wdPageBreak,
+                "换行符": constants.wdLineBreak,
+                "分节符": constants.wdSectionBreakNextPage,
+                "制表符": constants.wdTab
+            },
+            "ALIGN_MAP": {
+                "左对齐": constants.wdAlignParagraphLeft,
+                "居中": constants.wdAlignParagraphCenter,
+                "右对齐": constants.wdAlignParagraphRight,
+                "两端对齐": constants.wdAlignParagraphJustify
+            },
+            "ROW_SPACING_MAP": {
+                "倍数行距": constants.wdLineSpaceMultiple,
+                "最小行距": constants.wdLineSpaceAtLeast,
+                "固定行距": constants.wdLineSpaceExactly,
+            },
+            "SCOPE_MAP": {
+                "行": constants.wdLine,
+                "字符": constants.wdCharacter,
+                "段落": constants.wdParagraph,
+                "表格单元格": constants.wdCell,
+                "页面": constants.wdPage,
+                "整个文档": constants.wdStory
+            },
+            "BOUNDARY_CHECKS": {
+                "cell_start": lambda s: s.Information(constants.wdWithInTable),
+                "cell_end": lambda s: s.Information(constants.wdWithInTable),
+                "page_start": lambda s: s.Information(constants.wdActiveEndPageNumber) > 0,
+            },
+            "BOUNDARY_ACTIONS" : {
+                "line_start": (constants.wdLine, constants.wdMove),
+                "line_end": (constants.wdLine, constants.wdExtend),
+                "cell_start": (constants.wdCell, constants.wdMove),
+                "cell_end": (constants.wdCell, constants.wdExtend),
+                "page_start": (constants.wdPage, constants.wdMove),
+                "page_end": (constants.wdPage, constants.wdExtend),
+                "doc_start": (constants.wdStory, constants.wdMove),
+                "doc_end": (constants.wdStory, constants.wdExtend)
+            },
+            "COLLAPSE_MAP": {
+                "right": constants.wdCollapseEnd,
+                "left": constants.wdCollapseStart,
+            }
+        }
     def done_task(self):  # 多进程级别保证同步
         with self.lock_task_num:
             self.done_task_num += 1
