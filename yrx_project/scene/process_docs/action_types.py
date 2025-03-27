@@ -5,14 +5,16 @@ import pandas as pd
 from yrx_project.client.const import READONLY_TEXT, EDITABLE_TEXT, DROPDOWN, COLOR_STR_RED, COLOR_STR_YELLOW, \
     COLOR_STR_GREEN, COLOR_STR_BLUE, READONLY_VALUE
 from yrx_project.scene.process_docs.base import Command, MIXING_TYPE_ID, ACTION_TYPE_MAPPING
-from yrx_project.scene.process_docs.command.insert_commands import InsertSpecialCommand, InsertTextCommand
-from yrx_project.scene.process_docs.command.locate_commands import SearchTextCommand, MoveCursorCommand, \
-    MoveCursorUntilSpecialCommand
-from yrx_project.scene.process_docs.command.select_commands import SelectCurrentScopeCommand, SelectUntilCommand
-from yrx_project.scene.process_docs.command.update_command import ReplaceTextCommand, UpdateFontCommand, \
-    AdjustFontSizeCommand, UpdateFontColorCommand, UpdateParagraphCommand
-from yrx_project.scene.process_docs.command.mixing_commands import MergeDocumentsCommand
 
+# from yrx_project.scene.process_docs.command.insert_commands import InsertSpecialCommand, InsertTextCommand
+# from yrx_project.scene.process_docs.command.locate_commands import SearchTextCommand, MoveCursorCommand, \
+#     MoveCursorUntilSpecialCommand
+# from yrx_project.scene.process_docs.command.select_commands import SelectCurrentScopeCommand, SelectUntilCommand
+# from yrx_project.scene.process_docs.command.update_command import ReplaceTextCommand, UpdateFontCommand, \
+#     AdjustFontSizeCommand, UpdateFontColorCommand, UpdateParagraphCommand
+# from yrx_project.scene.process_docs.command.mixing_commands import MergeDocumentsCommand
+
+from yrx_project.scene.process_docs.office_word_command_impl.commands import *
 
 class ActionType:
     columns = ["action_type_id", "group_id", "action_id", "action_name", "action_content_ui", "action_content_tip", "action_content_value", "command_class", "command_init_kwargs"]

@@ -107,28 +107,3 @@ class ActionProcessor:
             pythoncom.CoUninitialize()
         return
 
-
-if __name__ == '__main__':
-    # ActionProcessor([
-    #     {"action_type": "position", "action": "find_first_after", "params": {"content": "职务"}},
-    #     # {"action_type": "position", "action": "move_left", "params": {"content": "123"}},
-    #     {"action_type": "position", "action": "move_right", "params": {"content": 1}},
-    #     {"action_type": "select", "action": "select_current_cell", "params": None},
-    #     {"action_type": "update", "action": "replace", "params": {"content": "123abc123"}},
-    #     # {"action_type": "n2m", "action": "merge_docs", "params": {"inputs": [], "outputs": ""}},
-    # ]).process(file_paths=[
-    #     r"D:\Projects\yrx_project\test.docx",
-    # ])
-    #
-
-    ActionProcessor([
-        {'action_id': 'search_first_and_select', 'action_content': "职务"},
-        {'action_id': 'move_right', 'action_content': 1},
-        {'action_id': 'select_current',  'action_content': "单元格"},
-        {'action_id': 'replace_text', 'action_content': "sadfasdfsdaf"}
-        # {'action_id': 'merge_docs', 'action_params': {'content': '撒扩大飞机阿萨'}}
-    ]).process(file_paths=[
-        r"D:\Projects\yrx_project\test1.docx",
-        # r"D:\Projects\yrx_project\test2.docx",
-        # r"D:\Projects\yrx_project\test3.docx",
-    ])

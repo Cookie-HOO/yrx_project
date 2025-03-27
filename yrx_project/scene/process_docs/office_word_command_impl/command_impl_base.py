@@ -30,24 +30,25 @@ class OfficeWordImplBase:
                 "页面": constants.wdPage,
                 "整个文档": constants.wdStory
             },
-            "BOUNDARY_CHECKS": {
-                "cell_start": lambda s: s.Information(constants.wdWithInTable),
-                "cell_end": lambda s: s.Information(constants.wdWithInTable),
-                "page_start": lambda s: s.Information(constants.wdActiveEndPageNumber) > 0,
+            "BOUNDARY_MAP": {
+                "当前行开头": (constants.wdLine, constants.wdCollapseStart),
+                "当前行结尾": (constants.wdLine, constants.wdCollapseEnd),
+                "上一段开头": (constants.wdParagraph, constants.wdCollapseStart),
+                "上一段结尾": (constants.wdParagraph, constants.wdCollapseEnd),
+                "当前单元格开头": (constants.wdCell, constants.wdCollapseStart),
+                "当前单元格结尾": (constants.wdCell, constants.wdCollapseEnd),
+                "当前页面开头": (constants.wdPage, constants.wdCollapseStart),
+                "当前页面结尾": (constants.wdPage, constants.wdCollapseEnd),
+                "当前文档开头": (constants.wdStory, constants.wdCollapseStart),
+                "当前文档结尾": (constants.wdStory, constants.wdCollapseEnd),
             },
-            "BOUNDARY_ACTIONS": {
-                "line_start": (constants.wdLine, constants.wdMove),
-                "line_end": (constants.wdLine, constants.wdExtend),
-                "cell_start": (constants.wdCell, constants.wdMove),
-                "cell_end": (constants.wdCell, constants.wdExtend),
-                "page_start": (constants.wdPage, constants.wdMove),
-                "page_end": (constants.wdPage, constants.wdExtend),
-                "doc_start": (constants.wdStory, constants.wdMove),
-                "doc_end": (constants.wdStory, constants.wdExtend)
+            "SELECTION_TYPE": {
+                "wdSelectionIP": constants.wdSelectionIP,
+                "wdSelectionNormal": constants.wdSelectionNormal
             },
             "COLLAPSE_MAP": {
-                "right": constants.wdCollapseEnd,
                 "left": constants.wdCollapseStart,
+                "right": constants.wdCollapseEnd,
             }
         }
 

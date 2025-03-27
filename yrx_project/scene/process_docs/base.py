@@ -5,8 +5,7 @@ from multiprocessing import Lock
 
 import pandas as pd
 
-from yrx_project.const import TEMP_PATH
-from yrx_project.scene.process_docs.command_impl_base import OfficeWordImplBase
+from yrx_project.scene.process_docs.office_word_command_impl.command_impl_base import OfficeWordImplBase
 from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
 from yrx_project.utils.file import get_file_name_without_extension
 
@@ -101,23 +100,13 @@ class Command(OfficeWordImplBase):
         self.run_impl = self.office_word_run
 
     def run(self, context: ActionContext):
-        level, msg = "unknown", "unknown"
-        run_impl = self.run_impl
-        if self.run_impl is None:
-            raise ValueError("先执行 set impl")
         try:
-            res = run_impl(context)
-            if res is None or res is True:
-                res = [True, None]
-            success, msg = res
-            msg = msg or ""
-            level = "info" if success else "warn"
+            success, msg = self.run_impl(context)
+            context.add_log("info" if success else "warn", msg or "", context.file_name_without_extension)
+            return success
         except Exception as e:
-            level = "error"
-            msg = f"{str(e)}"
-        finally:
-            context.add_log(level=level, msg=msg, file_name_without_extension=context.file_name_without_extension)
-        return
+            context.add_log("error", str(e), context.file_name_without_extension)
+            return False
 
     def pre_check(self):
         self.office_word_check()
