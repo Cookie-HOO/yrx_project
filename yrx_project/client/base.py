@@ -241,8 +241,9 @@ class BaseWindow(QMainWindow):
     def download_zip_from_path(self, path, default_topic):
         file_path = self.download_file_modal(f"{TimeObj().time_str}_{default_topic}.zip")
         if not file_path:
-            return
+            return False
         make_zip(path, file_path.rstrip(".zip"))
+        return True
 
     # copy_file(DAILY_REPORT_RESULT_TEMPLATE_PATH, filePath)
 

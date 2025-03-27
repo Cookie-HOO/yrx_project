@@ -2,7 +2,7 @@ import os
 import shutil
 from multiprocessing import cpu_count, Pool
 
-from yrx_project.client.const import COLOR_YELLOW, DROPDOWN
+from yrx_project.client.const import COLOR_YELLOW, DROPDOWN, READONLY_VALUE
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.scene.process_docs.base import ActionContext, ACTION_TYPE_MAPPING
 from yrx_project.scene.process_docs.action_types import action_types
@@ -56,6 +56,7 @@ def run_with_actions(
 
         action_objs.append({
             "action_id": action_id,
+            "action_content": action_content,
             "action_params": {"content": action_content}},
         )
 
@@ -193,7 +194,7 @@ def set_table_value(table_wrapper: TableWidgetWrapper, actions):
                 "value": action_row["action_name"],  # 动作
             }, {
                 "type": action_row["action_content_ui"],  # 动作内容
-                "value": values or action["params"].get("content") or "---",
+                "value": values or action["params"].get("content") or READONLY_VALUE,
                 "cur_index": cur_index,
             }, {
                 "type": "button_group",
@@ -267,15 +268,3 @@ ACTION_SUITS = {
         {"action_id": "merge_documents", "params": {}},
     ]
 }
-
-if __name__ == '__main__':
-    ActionProcessor([
-        {"action_id": "find_first_after", "params": {"content": "职务"}},
-        # {"action_type": "position", "action": "move_left", "params": {"content": "123"}},
-        {"action_id": "move_right", "params": {"content": 1}},
-        {"action_id": "select_current_cell", "params": None},
-        {"action_id": "replace", "params": {"content": "123abc123"}},
-        # {"action_type": "n2m", "action": "merge_docs", "params": {"inputs": [], "outputs": ""}},
-    ]).process(file_paths=[
-        r"D:\Projects\yrx_project\test.docx",
-    ])

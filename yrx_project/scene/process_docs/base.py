@@ -3,8 +3,12 @@ import shutil
 import typing
 from multiprocessing import Lock
 
+import pandas as pd
+
 from yrx_project.const import TEMP_PATH
+from yrx_project.scene.process_docs.command_impl_base import OfficeWordImplBase
 from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
+from yrx_project.utils.file import get_file_name_without_extension
 
 MIXING_TYPE_ID = "mixing"
 
@@ -40,61 +44,19 @@ class ActionContext:
         self.done_task_num = 0
         self.total_task_num = 0
         self.done_file_num = 0
+        self.columns = ["level", "msg", "file_name_without_extension", "command_ins"]
+        self.log_df = pd.DataFrame(columns=self.columns)
 
         # 4. 工具
         self.word = None  # 操作word的对象
         self.lock_task_num = Lock()
         self.lock_file_num = Lock()
-        self.const = self.const_init()
+        self.lock_log = Lock()
 
-    def const_init(self):
-        from win32com.client import constants
-        return {
-            "SYMBOL_MAP": {
-                "分页符": constants.wdPageBreak,
-                "换行符": constants.wdLineBreak,
-                "分节符": constants.wdSectionBreakNextPage,
-                "制表符": constants.wdTab
-            },
-            "ALIGN_MAP": {
-                "左对齐": constants.wdAlignParagraphLeft,
-                "居中": constants.wdAlignParagraphCenter,
-                "右对齐": constants.wdAlignParagraphRight,
-                "两端对齐": constants.wdAlignParagraphJustify
-            },
-            "ROW_SPACING_MAP": {
-                "倍数行距": constants.wdLineSpaceMultiple,
-                "最小行距": constants.wdLineSpaceAtLeast,
-                "固定行距": constants.wdLineSpaceExactly,
-            },
-            "SCOPE_MAP": {
-                "行": constants.wdLine,
-                "字符": constants.wdCharacter,
-                "段落": constants.wdParagraph,
-                "表格单元格": constants.wdCell,
-                "页面": constants.wdPage,
-                "整个文档": constants.wdStory
-            },
-            "BOUNDARY_CHECKS": {
-                "cell_start": lambda s: s.Information(constants.wdWithInTable),
-                "cell_end": lambda s: s.Information(constants.wdWithInTable),
-                "page_start": lambda s: s.Information(constants.wdActiveEndPageNumber) > 0,
-            },
-            "BOUNDARY_ACTIONS" : {
-                "line_start": (constants.wdLine, constants.wdMove),
-                "line_end": (constants.wdLine, constants.wdExtend),
-                "cell_start": (constants.wdCell, constants.wdMove),
-                "cell_end": (constants.wdCell, constants.wdExtend),
-                "page_start": (constants.wdPage, constants.wdMove),
-                "page_end": (constants.wdPage, constants.wdExtend),
-                "doc_start": (constants.wdStory, constants.wdMove),
-                "doc_end": (constants.wdStory, constants.wdExtend)
-            },
-            "COLLAPSE_MAP": {
-                "right": constants.wdCollapseEnd,
-                "left": constants.wdCollapseStart,
-            }
-        }
+    @property
+    def file_name_without_extension(self):
+        return get_file_name_without_extension(self.file_path)
+
     def done_task(self):  # 多进程级别保证同步
         with self.lock_task_num:
             self.done_task_num += 1
@@ -103,21 +65,62 @@ class ActionContext:
         with self.lock_file_num:
             self.done_file_num += 1
 
+    def add_log(self, level, msg, file_name_without_extension):
+        new_row = pd.DataFrame(
+            [[level, msg, file_name_without_extension, self]],
+            columns=self.columns,
+        )
+        with self.lock_log:
+            self.log_df = pd.concat([self.log_df, new_row], ignore_index=True)
 
-class Command:
+
+class Command(OfficeWordImplBase):
     action_type_id = None
     action_name = None
 
-    def __init__(self, content, action_type_id, action_name, **kwargs):
-        self.content = content
+    def __init__(self, action_type_id, action_type_name, action_name, action_id, action_content, **kwargs):
+        super(Command, self).__init__()
+        self.content = action_content
         self.action_type_id = action_type_id
+        self.action_type_name = action_type_name
+        self.action_id = action_id
         self.action_name = action_name
 
-    def run(self, context: ActionContext):
-        return self.office_word_run(context)
+        # 动态设置执行策略
+        self.check_param = None
+        self.consts = None
+        self.run_impl = None
+        self.set_impl()  # 目前切换是office word的实现
 
-    def office_word_run(self, context: ActionContext):
-        raise NotImplementedError
+        # 执行预检
+        self.pre_check()
+
+    def set_impl(self):
+        self.check_param = self.office_word_check
+        self.consts = self.__office_word_consts
+        self.run_impl = self.office_word_run
+
+    def run(self, context: ActionContext):
+        level, msg = "unknown", "unknown"
+        run_impl = self.run_impl
+        if self.run_impl is None:
+            raise ValueError("先执行 set impl")
+        try:
+            res = run_impl(context)
+            if res is None or res is True:
+                res = [True, None]
+            success, msg = res
+            msg = msg or ""
+            level = "info" if success else "warn"
+        except Exception as e:
+            level = "error"
+            msg = f"{str(e)}"
+        finally:
+            context.add_log(level=level, msg=msg, file_name_without_extension=context.file_name_without_extension)
+        return
+
+    def pre_check(self):
+        self.office_word_check()
 
     def is_mixing(self):
         return self.action_type_id == MIXING_TYPE_ID

@@ -26,3 +26,5 @@ EDITABLE_TEXT = "editable_text"
 READONLY_TEXT = "readonly_text"
 DROPDOWN = "dropdown"
 
+READONLY_VALUE = "---"
+

@@ -71,7 +71,7 @@ class UpdateParagraphCommand(Command):
         self.line_spacing_type = line_spacing_type
 
     def office_word_run(self, context: ActionContext):
-        ALIGN_MAP = context.const.get("ALIGN_MAP")
+        ALIGN_MAP = context.office_word_const.get("ALIGN_MAP")
         # 行距设置
         if self.attribute == "line_spacing":
             self._set_line_spacing(context)
@@ -81,7 +81,7 @@ class UpdateParagraphCommand(Command):
             context.selection.ParagraphFormat.Alignment = ALIGN_MAP[self.content]
 
     def _set_line_spacing(self, context):
-        ROW_SPACING_MAP = context.const.get("ROW_SPACING_MAP")
+        ROW_SPACING_MAP = context.office_word_const.get("ROW_SPACING_MAP")
         line_type = self.line_spacing_type
         value = float(self.content) if self.content.isdigit() else 1.0
 

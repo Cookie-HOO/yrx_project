@@ -643,8 +643,8 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     #
     @set_error_wrapper
     def download_result(self, *args, **kwargs):
-        self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理")
-        self.modal(level="info", msg="✅下载成功")
+        if self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理"):
+            self.modal(level="info", msg="✅下载成功")
 
     # @set_error_wrapper
     # def custom_after_download(self, after_download_result):

@@ -24,7 +24,7 @@ class ActionParser:
         """
         cm = CommandManager()
         for action_dict in actions:
-            cm.add_command(action_types.init_command(action_dict.get("action_id"), action_dict.get("action_params")))
+            cm.add_command(action_types.init_command(action_dict.get("action_id"), action_dict.get("action_content")))
         return cm
 
 
@@ -122,10 +122,10 @@ if __name__ == '__main__':
     #
 
     ActionProcessor([
-        {'action_id': 'search_first_and_select', 'action_params': {'content': '职务'}},
-        {'action_id': 'move_right', 'action_params': {'content': '1'}},
-        {'action_id': 'select_current',  'action_params': {'content': '单元格', }},
-        {'action_id': 'replace_text', 'action_params': {'content': 'sadfasdfsdaf'}}
+        {'action_id': 'search_first_and_select', 'action_content': "职务"},
+        {'action_id': 'move_right', 'action_content': 1},
+        {'action_id': 'select_current',  'action_content': "单元格"},
+        {'action_id': 'replace_text', 'action_content': "sadfasdfsdaf"}
         # {'action_id': 'merge_docs', 'action_params': {'content': '撒扩大飞机阿萨'}}
     ]).process(file_paths=[
         r"D:\Projects\yrx_project\test1.docx",

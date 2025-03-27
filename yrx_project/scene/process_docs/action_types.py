@@ -1,13 +1,14 @@
+import typing
+
 import pandas as pd
 
 from yrx_project.client.const import READONLY_TEXT, EDITABLE_TEXT, DROPDOWN, COLOR_STR_RED, COLOR_STR_YELLOW, \
-    COLOR_STR_GREEN, COLOR_STR_BLUE
-from yrx_project.scene.process_docs.base import Command, MIXING_TYPE_ID
+    COLOR_STR_GREEN, COLOR_STR_BLUE, READONLY_VALUE
+from yrx_project.scene.process_docs.base import Command, MIXING_TYPE_ID, ACTION_TYPE_MAPPING
 from yrx_project.scene.process_docs.command.insert_commands import InsertSpecialCommand, InsertTextCommand
 from yrx_project.scene.process_docs.command.locate_commands import SearchTextCommand, MoveCursorCommand, \
     MoveCursorUntilSpecialCommand
-from yrx_project.scene.process_docs.command.select_commands import SelectCurrentScopeCommand, SelectRangeCommand, \
-    SelectUntilCommand
+from yrx_project.scene.process_docs.command.select_commands import SelectCurrentScopeCommand, SelectUntilCommand
 from yrx_project.scene.process_docs.command.update_command import ReplaceTextCommand, UpdateFontCommand, \
     AdjustFontSizeCommand, UpdateFontColorCommand, UpdateParagraphCommand
 from yrx_project.scene.process_docs.command.mixing_commands import MergeDocumentsCommand
@@ -72,14 +73,20 @@ class ActionType:
         """
         return self.action_types_df[self.action_types_df["group_id"] == group_id]
 
-    def init_command(self, action_id, action_params) -> Command:
+    def init_command(self, action_id, action_content) -> Command:
         action_row = self.get_action_by_id(action_id)
-        cc = action_row["command_class"]
+        cc: typing.Type[Command] = action_row["command_class"]
         cik = action_row["command_init_kwargs"] or {}
         action_type_id = action_row["action_type_id"]
+        action_type_name, action_type_tip = ACTION_TYPE_MAPPING.get(action_type_id)
+        action_id = action_row["action_id"]
         action_name = action_row["action_name"]
-        action_params = action_params or {}
-        return cc(**cik, **action_params, action_type_id=action_type_id, action_name=action_name)
+        return cc(
+            **cik,
+            action_type_id=action_type_id, action_type_name=action_type_name,
+            action_id=action_id, action_name=action_name, action_content=action_content
+
+        )
 
 
 action_types = ActionType()
@@ -99,7 +106,7 @@ action_types.load_from_config({
         "move_until": [
             ["move_prev_to_landmark_only_text", "移动：向前跳至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": True}],
             ["move_next_to_landmark_only_text", "移动：向后跳至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right", "ignore_blank": True}],
-            ["move_prev_to_landmark", "移动：向后跳至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": False}],
+            ["move_prev_to_landmark", "移动：向前跳至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": False}],
             ["move_next_to_landmark", "移动：向后跳至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right", "ignore_blank": False}],
         ]
     },
@@ -116,7 +123,7 @@ action_types.load_from_config({
         "move_until_and_select": [
             ["select_prev_to_landmark_only_text", "选择：向前至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": True, "select": True}],
             ["select_next_to_landmark_only_text", "选择：向后至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right","ignore_blank": True, "select": True}],
-            ["select_prev_to_landmark", "选择：向后至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": False, "select": True}],
+            ["select_prev_to_landmark", "选择：向前至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": False, "select": True}],
             ["select_next_to_landmark", "选择：向后至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right","ignore_blank": False, "select": True}],
         ],
         "move_and_select": [
@@ -173,7 +180,7 @@ action_types.load_from_config({
     },
     MIXING_TYPE_ID: {
         "operations": [
-            ["merge_documents", "合并文档（无需输入）", READONLY_TEXT, "合并所有文档", "---", MergeDocumentsCommand, None],
+            ["merge_documents", "合并文档（无需输入）", READONLY_TEXT, "合并所有文档", READONLY_VALUE, MergeDocumentsCommand, None],
         ]
     }
 })

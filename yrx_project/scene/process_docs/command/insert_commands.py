@@ -1,10 +1,9 @@
 from yrx_project.scene.process_docs.base import Command, ActionContext
 
 
-
 class InsertSpecialCommand(Command):
     def office_word_run(self, context: ActionContext):
-        SYMBOL_MAP = context.const.get("SYMBOL_MAP")
+        SYMBOL_MAP = context.office_word_const.get("SYMBOL_MAP")
         if self.content in SYMBOL_MAP:
             context.selection.InsertBreak(SYMBOL_MAP[self.content])
 

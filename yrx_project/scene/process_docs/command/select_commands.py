@@ -15,11 +15,12 @@ from yrx_project.scene.process_docs.base import Command, ActionContext
 #             context.selected_range = paragraph.Range
 
 class SelectCurrentScopeCommand(Command):
+    def office_word_check(self):
+        if self.content not in self.consts.get("SCOPE_MAP"):
+            raise ValueError("参数不合法: content")
 
     def office_word_run(self, context: ActionContext):
-        SCOPE_MAP = context.const.get("SCOPE_MAP")
-        if self.content in SCOPE_MAP:
-            context.selection.Expand(Unit=SCOPE_MAP[self.content])
+        context.selection.Expand(Unit=self.consts.get("SCOPE_MAP")[self.content])
 
 
 class SelectRangeCommand(Command):
@@ -28,8 +29,8 @@ class SelectRangeCommand(Command):
         self.boundary = boundary
 
     def office_word_run(self, context: ActionContext):
-        BOUNDARY_CHECKS = context.const.get("BOUNDARY_CHECKS")
-        BOUNDARY_ACTIONS = context.const.get("BOUNDARY_ACTIONS")
+        BOUNDARY_CHECKS = context.office_word_const.get("BOUNDARY_CHECKS")
+        BOUNDARY_ACTIONS = context.office_word_const.get("BOUNDARY_ACTIONS")
         if not self.boundary or not BOUNDARY_CHECKS.get(self.boundary, lambda _: True)(context.selection):
             return
 
