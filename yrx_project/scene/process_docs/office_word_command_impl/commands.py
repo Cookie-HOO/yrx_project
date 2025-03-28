@@ -275,14 +275,18 @@ class UpdateFontColorCommand(Command):
         super().__init__(**kwargs)
 
     def office_word_check(self, context: ActionContext):
-        if self.color_mode != "preset":
+        if self.color_mode not in ["preset", "custom"]:
             raise ValueError("参数非法: color_mode")
 
     def office_word_run(self, context: ActionContext):
         if context.selection.Type not in context.consts["SELECTION_TYPE"]["text"]:
             return False, "需要选中内容才能修改颜色"
-        color_map = {"红色": 0xFF0000, "蓝色": 0x0000FF, "绿色": 0x00FF00}
-        context.selection.Font.Color = color_map.get(self.content, 0x000000)
+        if self.color_mode == "preset":
+            color_map = {"红色": 0xFF0000, "蓝色": 0x0000FF, "绿色": 0x00FF00}
+            color_value = color_map.get(self.content, 0x000000)
+        else:
+            color_value = self.content
+        context.selection.Font.Color = color_value
         return True, None
 
 class UpdateParagraphCommand(Command):

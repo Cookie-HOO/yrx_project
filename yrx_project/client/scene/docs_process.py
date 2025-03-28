@@ -8,6 +8,7 @@ from PyQt5.QtCore import pyqtSignal
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import UI_PATH
 from yrx_project.client.utils.button_menu_widget import ButtonMenuWrapper
+from yrx_project.client.utils.line_splitter import LineSplitterWrapper
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
 from yrx_project.client.utils.tree_file_widget import TreeFileWrapper
 from yrx_project.const import PROJECT_PATH, TEMP_PATH
@@ -362,6 +363,10 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         self.step3_help_info_button.clicked.connect(lambda: self.modal(level="info", msg=self.step3_help_info_text))
         self.demo_button.hide()  # todo 演示功能先隐藏
 
+        # 布局修改
+        ## 1. 上下布局可移动
+        # self.line_splitter = LineSplitterWrapper(self.line_test)  # todo 目前line不在布局中，无法测试
+
         # 1. 批量上传文档
         # 1.1 按钮
         self.add_docs_button.clicked.connect(self.add_docs)
@@ -373,12 +378,12 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         #                                               drag_func=self.help_drag_drop_event)  # 上传table之后展示所有table的表格
         #
         # # 2. 添加动作流
-        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 320)
+        self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 320).set_col_width(3, 140)
         self.add_action_button_menu = ButtonMenuWrapper(
             self, self.add_action_button, build_action_types_menu(self.actions_table_wrapper)
         )
         self.action_suit_button_menu = ButtonMenuWrapper(
-            self, self.action_suit_button, build_action_suit_menu(self.actions_table_wrapper)
+            self, self.action_tools_button, build_action_suit_menu(self.actions_table_wrapper)
         )
 
         # self.add_action_button.clicked.connect(self.add_action)

@@ -3,7 +3,7 @@ import typing
 import pandas as pd
 
 from yrx_project.client.const import READONLY_TEXT, EDITABLE_TEXT, DROPDOWN, COLOR_STR_RED, COLOR_STR_YELLOW, \
-    COLOR_STR_GREEN, COLOR_STR_BLUE, READONLY_VALUE
+    COLOR_STR_GREEN, COLOR_STR_BLUE, READONLY_VALUE, EDITABLE_INT, EDITABLE_COLOR
 from yrx_project.scene.process_docs.base import Command, MIXING_TYPE_ID, ACTION_TYPE_MAPPING
 
 # from yrx_project.scene.process_docs.command.insert_commands import InsertSpecialCommand, InsertTextCommand
@@ -100,10 +100,10 @@ action_types.load_from_config({
             ["search_first_and_move_right", "搜索：[输入] 关键词并移动光标到右侧", EDITABLE_TEXT, "输入搜索内容", "", SearchTextCommand, {"pointer_after_search": "right"}],
         ],
         "move": [
-            ["move_up_lines", "移动：[输入] 上移行数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "up", "unit": "行"}],
-            ["move_down_lines", "移动：[输入] 下移行数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "down", "unit": "行"}],
-            ["move_left_chars", "移动：[输入] 左移字符数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "left", "unit": "字符"}],
-            ["move_right_chars", "移动：[输入] 右移字符数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "right", "unit": "字符"}],
+            ["move_up_lines", "移动：[输入] 上移行数", EDITABLE_INT+"?suffix= 行;min_num=1", "输入正整数（默认：1）", 1, MoveCursorCommand, {"direction": "up", "unit": "行"}],
+            ["move_down_lines", "移动：[输入] 下移行数", EDITABLE_INT+"?suffix= 行;min_num=1", "输入正整数（默认：1）", 1, MoveCursorCommand, {"direction": "down", "unit": "行"}],
+            ["move_left_chars", "移动：[输入] 左移字符数", EDITABLE_INT+"?suffix= 字符;min_num=1", "输入正整数（默认：1）", 1, MoveCursorCommand, {"direction": "left", "unit": "字符"}],
+            ["move_right_chars", "移动：[输入] 右移字符数", EDITABLE_INT+"?suffix= 字符;min_num=1", "输入正整数（默认：1）", 1, MoveCursorCommand, {"direction": "right", "unit": "字符"}],
         ],
         "move_until": [
             ["move_prev_to_landmark_only_text", "移动：向前跳至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": True}],
@@ -129,18 +129,18 @@ action_types.load_from_config({
             ["select_next_to_landmark", "选择：向后至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right","ignore_blank": False, "select": True}],
         ],
         "move_and_select": [
-            ["select_up_lines", "选择：[输入] 向上选择的行数（算当前行）", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand,{"direction": "up", "unit": "line", "select": True}],
-            ["select_down_lines", "选择：[输入] 向下选择的行数（算当前行）", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "down", "unit": "line", "select": True}],
-            ["select_left_chars", "选择：[输入] 向左选中字符", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "left", "unit": "character", "select": True}],
-            ["select_right_chars", "选择：[输入] 向右选中字符", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "right", "unit": "character", "select": True}],
+            ["select_up_lines", "选择：[输入] 向上选择的行数（算当前行）", EDITABLE_INT+"?suffix= 行;min_num=1", "输入正整数（默认：1）", "1", MoveCursorCommand,{"direction": "up", "unit": "line", "select": True}],
+            ["select_down_lines", "选择：[输入] 向下选择的行数（算当前行）", EDITABLE_INT+"?suffix= 行;min_num=1", "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "down", "unit": "line", "select": True}],
+            ["select_left_chars", "选择：[输入] 向左选中字符", EDITABLE_INT+"?suffix= 字符;min_num=1", "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "left", "unit": "character", "select": True}],
+            ["select_right_chars", "选择：[输入] 向右选中字符", EDITABLE_INT+"?suffix= 字符;min_num=1", "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "right", "unit": "character", "select": True}],
         ],
         "inline": [
             ["inline_select_to_prev_text", "行内：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "inline", "until": "custom"}],
             ["inline_select_to_next_text", "行内：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "inline", "until": "custom"}],
         ],
         "cell": [
-            ["cell_select_to_prev_condition", "表格单元格内：向前选择至 [选择] 终止条件", DROPDOWN, "请选择终止条件", ["第一个空行"], SelectUntilCommand, {"direction": "left", "scope": "cell", "until": "preset"}],
-            ["cell_select_to_next_condition", "表格单元格内：向后选择至 [选择] 终止条件", DROPDOWN, "请选择终止条件", ["第一个空行"], SelectUntilCommand, {"direction": "right", "scope": "cell", "until": "preset"}],
+            ["cell_select_to_prev_landmark", "表格单元格内：向前选择至 [选择] 终止条件", DROPDOWN, "请选择终止条件", ["第一个空行"], SelectUntilCommand, {"direction": "left", "scope": "cell", "until": "preset"}],
+            ["cell_select_to_next_landmark", "表格单元格内：向后选择至 [选择] 终止条件", DROPDOWN, "请选择终止条件", ["第一个空行"], SelectUntilCommand, {"direction": "right", "scope": "cell", "until": "preset"}],
             ["cell_select_to_prev_text", "表格单元格内：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "cell", "until": "custom"}],
             ["cell_select_to_next_text", "表格单元格内：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "cell", "until": "custom"}],
         ],
@@ -168,15 +168,16 @@ action_types.load_from_config({
             ["replace_text", "替换：[输入] 新文本内容", EDITABLE_TEXT, "输入替换后的完整内容", "", ReplaceTextCommand, None],
         ],
         "font": [
+            ["set_font_color_preset", "颜色：[选择] 预设颜色", DROPDOWN, "请选择颜色", ["红色", "蓝色", "绿色"], UpdateFontColorCommand, {"color_mode": "preset"}],
+            ["set_font_color_custom", "颜色：[输入] 自定义颜色", EDITABLE_COLOR, "请输入颜色", "#000000", UpdateFontColorCommand, {"color_mode": "custom"}],
             ["set_font_family", "字体：[选择] 字体系列", DROPDOWN, "请选择字体", ["宋体", "黑体", "仿宋", "楷体", "Times New Roman", "Arial"], UpdateFontCommand, {"attribute": "family"}],
             ["set_font_size", "字号：[选择] 预设字号", DROPDOWN, "请选择字号", ["初号", "一号", "小三", "10pt", "12pt", "14pt", "16pt"], UpdateFontCommand, {"attribute": "size"}],
             ["adjust_font_size", "字号调整：[选择] 增大或减小", DROPDOWN, "请选择操作", ["增大一级", "减小一级"], AdjustFontSizeCommand, {"step": 1}],
-            ["set_font_color", "颜色：[选择] 预设颜色", DROPDOWN, "请选择颜色", ["红色", "蓝色", "绿色"], UpdateFontColorCommand, {"color_mode": "preset"}],
         ],
         "paragraph": [
-            ["set_line_spacing", "行距：[输入] 行距倍数", DROPDOWN, "默认1倍", "1", UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "times"}],
-            ["set_line_spacing", "行距：[输入] 最小磅值", DROPDOWN, "默认12磅", "12", UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "min_bounds"}],
-            ["set_custom_line_spacing", "行距：[输入] 自定义磅值", EDITABLE_TEXT, "默认12磅", "12", UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "fix"}],
+            ["set_line_spacing_times", "行距：[输入] 行距倍数", DROPDOWN, "默认1倍", ["1"], UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "times"}],
+            ["set_line_spacing_min", "行距：[输入] 最小磅值", DROPDOWN, "默认12磅", ["12"], UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "min_bounds"}],
+            ["set_line_spacing_custom", "行距：[输入] 自定义磅值", EDITABLE_INT+"?suffix= 磅;min_num=1", "默认12磅", 12, UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "fix"}],
             ["set_paragraph_alignment", "对齐：[选择] 对齐方式", DROPDOWN, "请选择对齐模式", ["左对齐", "居中", "右对齐", "两端对齐"], UpdateParagraphCommand, {"attribute": "alignment"}],
         ]
     },

@@ -155,29 +155,42 @@ GIVEUP 9. 缩略图
 GIVEUP    第一步增加预览按钮
 DONE 完成相关的功能函数
 DONE ✨✨✨保存好的实现路径
+DONE 给表格加一个数字spin的代理，默认有，可以关
+DONE 将action_config(action_id, 和params) 抽象一下，content替换params
+DONE 17. ✨✨颜色可以尝试使用color picker
+DONE ✨✨给action_config增加一个转rich_row的函数，可以快速添加到table中
+DONE    ✨GIVEUP 11. 操作的上下移动：修改action_configs，然后全部重绘制
+DONE✨✨工具箱按钮，按钮样式同步修改
+    加载内置的结构（当前的按钮）
+    复制当前结构
+    加载复制的结构，如果有内容，进行提示（无法找回当前的内容）
+    ---
+    查看当前逻辑计划执行图（待商榷）
+DONE✨✨action_types生成menu时增加tip
 
-WIN待测试，mac不好使，可能需要自己监听hover事件
-    ✨✨action_types生成menu时增加tip
-（待商榷）测试按钮，点击后是一个弹窗，可以选择输入的文档进行测试，生成的结果在0-test目录下
-    （待商榷）需要每个container 动态接受自己的parent是什么，test的时候，需要将container的parent设置为0-test
 --4. 关闭程序后，清理temp路径（待商榷）
 
 
-1. 重置按钮
-测试相关的功能函数
-10. ✨执行逻辑流程图
-13. ✨循环和条件的补充
+✨✨action操作，支持spliter，具体执行时没有任何作用，但是有颜色作为分割
+13. ✨✨循环和条件的补充
     当搜索后选择所有搜索结果时、
     循环的时候，所有需要循环的用一个别的背景色标识
-14. 工具箱：加载json，查看当前json
-17. ✨颜色可以尝试使用color picker
-action操作，支持spliter，具体执行时没有任何作用，但是有颜色作为分割
+✨增加光标状态的提示，是否是选择状态（待商榷）
+
+
 ✨需要有个地方看执行日志，文件的日志和操作的日志
-增加光标状态的提示，是否是选择状态
-将action_config(action_id, 和params) 抽象一下，content替换params
-给action_config增加一个转rich_row的函数，可以快速添加到table中
-    GIVEUP 11. 操作的上下移动
-给表格加一个数字spin的代理，默认有，可以关
+    和结果树状组件水平并列
+10. ✨执行逻辑流程图
+✨第一步/第二步 和 第三步 中间的分割线可以控制上下两部分的宽度
+✨执行和调试是两个tab
+    （待商榷）测试按钮，点击后是一个弹窗，可以选择输入的文档进行测试，生成的结果在0-test目录下
+        （待商榷）需要每个container 动态接受自己的parent是什么，test的时候，需要将container的parent设置为0-test
+        打开word，多一个按钮：「执行下一步」：action_name：action_content
+        table中最左侧显示一个标记，已经执行完的，和将要执行的
+
+测试相关的功能函数
+1. 重置按钮
+
 
 
 

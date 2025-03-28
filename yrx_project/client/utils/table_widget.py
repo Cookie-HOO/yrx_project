@@ -6,15 +6,17 @@ import xlsxwriter
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget, QComboBox, QPushButton, QHBoxLayout, QTableWidget, QCheckBox, \
-    QLineEdit, QSizePolicy, QLabel, QVBoxLayout, QHeaderView
+    QLineEdit, QSizePolicy, QLabel, QVBoxLayout, QHeaderView, QSpinBox
 from openpyxl.styles import PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.workbook import Workbook
 
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker
 from yrx_project.client.const import COLOR_BLUE
+from yrx_project.client.utils.button_color_widget import ColorPickerToolButton
 from yrx_project.client.utils.cascader_selector import CascaderSelectComboBox
 from yrx_project.client.utils.multi_selector import MultiSelectComboBox
+from yrx_project.client.utils.number_widget import CustomSpinBox
 from yrx_project.utils.color_util import rgb_to_hex
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing, MergedCells
 
@@ -129,23 +131,13 @@ class TableWidgetWrapper:
         return self
 
     def get_cell_value(self, row: int, column: int) -> typing.Optional[str]:
-        # 尝试获取QTableWidgetItem（普通文本）
-        item = self.table_widget.item(row, column)
-        if item is not None:
-            return item.text()
-
-        # 尝试获取QWidget（下拉框）
-        widget = self.table_widget.cellWidget(row, column)
-        if isinstance(widget, QComboBox):
-            return widget.currentText()
-
-        elif isinstance(widget, QCheckBox):  # 全局单选框
-            return widget.isChecked()
-
-        elif isinstance(widget, MultiSelectComboBox):
-            return widget.selected_values()  # 多选的值
-        elif isinstance(widget, CascaderSelectComboBox):
-            return widget.selected_values()  # 多选的值
+        widget = self.table_widget.item(row, column) or self.table_widget.cellWidget(row, column)
+        if isinstance(widget, QTableWidgetItem): return widget.text()
+        elif isinstance(widget, QComboBox): return widget.currentText()  # 下拉框
+        elif isinstance(widget, QCheckBox): return widget.isChecked()  # 全局单选框
+        elif isinstance(widget, (MultiSelectComboBox, CascaderSelectComboBox)): return widget.selected_values()  # 多选的值
+        elif isinstance(widget, QSpinBox): return widget.value()  # 数字
+        elif isinstance(widget, ColorPickerToolButton): return widget.color.name()  # 颜色：返回十六进制颜色字符串
         elif isinstance(widget, QWidget):
             line_edit = widget.findChild(QLineEdit)
             if line_edit is not None:
@@ -153,8 +145,6 @@ class TableWidgetWrapper:
             label = widget.findChild(QLabel)
             if label is not None:
                 return label.text()
-
-        # 如果既不是QTableWidgetItem也不是QComboBox，返回None
         return None
 
     def get_cell_value_with_color(self, row: int, column: int) -> (typing.Optional[str], typing.Optional[str]):
@@ -384,6 +374,25 @@ class TableWidgetWrapper:
                 item = QTableWidgetItem(str(cell.get("value")))
                 item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)
                 self.table_widget.setItem(nex_row_index, col_index, item)
+            elif cell_type == "editable_int":
+                params = {
+                    "cur_value": int(cell.get("value")),
+                    "min_num": cell_options.get("min_num"),
+                    "max_num": cell_options.get("max_num"),
+                    "step": cell_options.get("step"),
+                    "prefix": cell_options.get("prefix"),
+                    "suffix": cell_options.get("suffix"),
+                    "on_change": cell_options.get("on_change"),
+                }
+                item = CustomSpinBox(**params)
+                self.table_widget.setCellWidget(nex_row_index, col_index, item)
+            elif cell_type == "editable_color":
+                initial_color = QColor(cell.get("value", "#000000"))  # 默认黑色
+                color_btn = ColorPickerToolButton(initial_color)
+                # 绑定回调函数
+                if on_change := cell_options.get("on_change"):
+                    color_btn.colorChanged.connect(lambda color: on_change(color.name()))
+                self.table_widget.setCellWidget(nex_row_index, col_index, color_btn)
             elif cell_type == "dropdown":
                 values = cell.get("values") or cell.get("value")  # 兼容values
                 font_colors = cell_options.get("font_colors") or cell_options.get("colors")
@@ -489,15 +498,7 @@ class TableWidgetWrapper:
     def get_values_by_row_index(self, row_index) -> dict:
         values = {}
         for col_index, column_name in enumerate(self.get_columns()):
-            widget = self.table_widget.item(row_index, col_index) or self.table_widget.cellWidget(row_index, col_index)
-            if isinstance(widget, QTableWidgetItem):
-                values[column_name] = widget.text()
-            elif isinstance(widget, QComboBox):  # 下拉框
-                values[column_name] = widget.currentText()
-            elif isinstance(widget, QCheckBox):  # 全局单选框
-                values[column_name] = widget.isChecked()
-            elif isinstance(widget, QWidget):
-                values[column_name] = None
+            values[column_name] = self.get_cell_value(row_index, col_index)
         return values
 
     def save_with_color(self, path, include_cols=None, exclude_cols=None):

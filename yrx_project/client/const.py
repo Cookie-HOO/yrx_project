@@ -23,6 +23,8 @@ COLOR_STR_BLUE = "🟦"
 
 # item type
 EDITABLE_TEXT = "editable_text"
+EDITABLE_INT = "editable_int"
+EDITABLE_COLOR = "editable_color"
 READONLY_TEXT = "readonly_text"
 DROPDOWN = "dropdown"
 

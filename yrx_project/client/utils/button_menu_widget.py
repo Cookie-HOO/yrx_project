@@ -27,6 +27,7 @@ class ButtonMenuWrapper:
         根据 menu_list 动态生成菜单并绑定到按钮
         """
         main_menu = QMenu(self.window_obj)
+        main_menu.setToolTipsVisible(True)  # 启用主菜单的ToolTip显示
 
         for item in self.menu_list:
             if item["type"] == "menu_action":
@@ -40,6 +41,7 @@ class ButtonMenuWrapper:
             elif item["type"] == "menu":
                 # 子菜单：创建 QMenu 并设置提示（通过 menuAction）
                 sub_menu = QMenu(item["name"], self.window_obj)
+                sub_menu.setToolTipsVisible(True)  # 启用子菜单的ToolTip显示
                 if "tip" in item:
                     sub_menu.menuAction().setToolTip(item["tip"])  # 设置子菜单项的 tooltip
                 self._add_submenu_items(sub_menu, item["children"])
@@ -55,7 +57,7 @@ class ButtonMenuWrapper:
     def _add_submenu_items(self, sub_menu, children):
         """
         递归添加子菜单项
-        :param sub_menu: QMenu 对象
+        :param sub_menu: QMenu 对象（已启用ToolTip）
         :param children: 子菜单项列表
         """
         for child in children:
@@ -70,6 +72,7 @@ class ButtonMenuWrapper:
             elif child["type"] == "menu":
                 # 嵌套子菜单：设置提示（通过 menuAction）
                 nested_menu = QMenu(child["name"], self.window_obj)
+                nested_menu.setToolTipsVisible(True)  # 启用嵌套子菜单的ToolTip显示
                 if "tip" in child:
                     nested_menu.menuAction().setToolTip(child["tip"])  # 设置嵌套子菜单项的 tooltip
                 self._add_submenu_items(nested_menu, child["children"])
