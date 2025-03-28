@@ -30,7 +30,7 @@ class SelectRangeCommand(Command):
 
     def office_word_run(self, context: ActionContext):
         BOUNDARY_CHECKS = context.office_word_const.get("BOUNDARY_CHECKS")
-        BOUNDARY_ACTIONS = context.office_word_const.get("BOUNDARY_ACTIONS")
+        BOUNDARY_MAP = context.office_word_const.get("BOUNDARY_MAP")
         if not self.boundary or not BOUNDARY_CHECKS.get(self.boundary, lambda _: True)(context.selection):
             return
 
@@ -38,7 +38,7 @@ class SelectRangeCommand(Command):
         if "cell" in self.boundary and context.selection.Range.Tables.Count == 0:
             return
 
-        action = BOUNDARY_ACTIONS.get(self.boundary)
+        action = BOUNDARY_MAP.get(self.boundary)
         if action:
             unit, move_type = action
             context.selection.HomeKey(Unit=unit, Extend=move_type)

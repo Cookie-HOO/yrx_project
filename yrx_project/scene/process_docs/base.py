@@ -7,6 +7,7 @@ import pandas as pd
 
 from yrx_project.scene.process_docs.office_word_command_impl.command_impl_base import OfficeWordImplBase
 from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
+from yrx_project.scene.process_docs.office_word_command_impl.office_word_context import OfficeWordContext
 from yrx_project.utils.file import get_file_name_without_extension
 
 MIXING_TYPE_ID = "mixing"
@@ -29,8 +30,7 @@ class ActionContext:
 
         ## 当前文件对象
         self.file_path: typing.Optional[str] = None  # 当前文件路径，如果是mixing类的任务，为None
-        self.doc = None
-        self.selection = None
+        self.office_word_ctx = OfficeWordContext()
 
         # 2. 任务信息
         ## 所有任务
@@ -44,13 +44,47 @@ class ActionContext:
         self.total_task_num = 0
         self.done_file_num = 0
         self.columns = ["level", "msg", "file_name_without_extension", "command_ins"]
-        self.log_df = pd.DataFrame(columns=self.columns)
+        self.log_df_ = pd.DataFrame(columns=self.columns)
 
         # 4. 工具
-        self.word = None  # 操作word的对象
         self.lock_task_num = Lock()
         self.lock_file_num = Lock()
         self.lock_log = Lock()
+
+    @property
+    def log_df(self):
+        log_df = self.log_df_[["level", "msg", "file_name_without_extension"]]
+        log_df["action_name"] = self.log_df_["command_ins"].apply(lambda x: x.action_name)
+        log_df["action_content"] = self.log_df_["command_ins"].apply(lambda x: x.content)
+        return log_df
+
+    def __getattr__(self, item):
+        try:
+            return getattr(self.office_word_ctx, item)
+            # if item in self.office_word_ctx.__dict__:
+            #     return getattr(self.office_word_ctx, item)
+            # else:
+            #     raise AttributeError(f"'{type(self.office_word_ctx).__name__}' object has no attribute '{item}'")
+        except Exception as e:
+            raise AttributeError(f"Error accessing attribute '{item}': {e}")
+
+    def init(self, file_paths):
+        # 初始化逻辑
+        self.init_input_paths = file_paths
+        self.input_paths = file_paths
+        self.command_manager.cleanup(file_paths)
+        # 初始化 OfficeWordCtx
+        self.office_word_ctx.init()
+
+    def into_file(self, file_path):
+        self.office_word_ctx.into_file(file_path)
+
+    def quit_file(self):
+        self.done_file()
+        self.office_word_ctx.quit_file()
+
+    def cleanup(self):
+        self.office_word_ctx.cleanup()
 
     @property
     def file_name_without_extension(self):
@@ -70,7 +104,7 @@ class ActionContext:
             columns=self.columns,
         )
         with self.lock_log:
-            self.log_df = pd.concat([self.log_df, new_row], ignore_index=True)
+            self.log_df_ = pd.concat([self.log_df_, new_row], ignore_index=True)
 
 
 class Command(OfficeWordImplBase):
@@ -85,31 +119,15 @@ class Command(OfficeWordImplBase):
         self.action_id = action_id
         self.action_name = action_name
 
-        # 动态设置执行策略
-        self.check_param = None
-        self.consts = None
-        self.run_impl = None
-        self.set_impl()  # 目前切换是office word的实现
-
-        # 执行预检
-        self.pre_check()
-
-    def set_impl(self):
-        self.check_param = self.office_word_check
-        self.consts = self.__office_word_consts
-        self.run_impl = self.office_word_run
-
     def run(self, context: ActionContext):
+        self.office_word_check(context)
         try:
-            success, msg = self.run_impl(context)
+            success, msg = self.office_word_run(context)
             context.add_log("info" if success else "warn", msg or "", context.file_name_without_extension)
             return success
         except Exception as e:
             context.add_log("error", str(e), context.file_name_without_extension)
             return False
-
-    def pre_check(self):
-        self.office_word_check()
 
     def is_mixing(self):
         return self.action_type_id == MIXING_TYPE_ID

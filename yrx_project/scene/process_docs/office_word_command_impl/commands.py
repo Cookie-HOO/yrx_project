@@ -10,14 +10,14 @@ class SearchTextCommand(Command):
         self.pointer_after_search = pointer_after_search
         super().__init__(**kwargs)
 
-    def office_word_check(self):
-        if self.pointer_after_search not in self.consts["COLLAPSE_MAP"]:
+    def office_word_check(self, context: ActionContext):
+        if self.pointer_after_search not in context.consts["COLLAPSE_MAP"]:
             raise ValueError("参数非法: pointer_after_search")
         if not self.content:
             raise ValueError("参数非法: content")
 
     def office_word_run(self, context: ActionContext):
-        COLLAPSE_MAP = self.consts["COLLAPSE_MAP"]
+        COLLAPSE_MAP = context.consts["COLLAPSE_MAP"]
         selection = context.selection
         find = selection.Find
         find.ClearFormatting()
@@ -45,14 +45,14 @@ class MoveCursorCommand(Command):
         self.select = select
         super().__init__(**kwargs)
 
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if self.direction not in self.DIRECTION_METHODS:
             raise ValueError("参数非法: direction")
-        if self.unit not in self.consts["SCOPE_MAP"]:
+        if self.unit not in context.consts["SCOPE_MAP"]:
             raise ValueError("参数非法: unit")
 
     def office_word_run(self, context: ActionContext):
-        UNIT_TYPES = self.consts["SCOPE_MAP"]
+        UNIT_TYPES = context.consts["SCOPE_MAP"]
         method_name = self.DIRECTION_METHODS[self.direction]
         method = getattr(context.selection, method_name)
         method(Count=int(self.content), Unit=UNIT_TYPES[self.unit], Extend=self.select)
@@ -66,8 +66,8 @@ class MoveCursorUntilSpecialCommand(Command):
         self.select = select
         super().__init__(**kwargs)
 
-    def office_word_check(self):
-        if self.content not in self.consts["BOUNDARY_ACTIONS"]:
+    def office_word_check(self, context: ActionContext):
+        if self.content not in context.consts["BOUNDARY_MAP"]:
             raise ValueError("参数非法: content")
         if self.direction not in ["left", "right"]:
             raise ValueError("参数非法: direction")
@@ -75,92 +75,124 @@ class MoveCursorUntilSpecialCommand(Command):
             raise ValueError("参数非法: ignore_blank 必须是布尔值")
 
     def office_word_run(self, context: ActionContext):
-        boundary_action = self.consts["BOUNDARY_ACTIONS"][self.content]
-        unit, move_type = boundary_action
+        # 获取范围类型和折叠方向
+        boundary_action = context.consts["BOUNDARY_MAP"][self.content]
+        unit, collapse_direction = boundary_action
 
         selection = context.selection
+
+        # 扩展范围到指定的 unit
+        range = selection.Range
+        range.Expand(Unit=unit)
+
         if self.select:
+            # 选择模式
             if self.ignore_blank:
-                # 非空白扩展（需结合Find实现，此处简化逻辑）
-                selection.Expand(Unit=unit)
+                success, message = self._select_with_non_blank(context, range)
+                if not success:
+                    return False, message
             else:
-                selection.Expand(Unit=unit)
-                selection.Collapse(
-                    Direction=self.consts["COLLAPSE_MAP"]["left"] if self.direction == "left" else self.consts["COLLAPSE_MAP"]["right"]
-                )
-        else:
-            if self.ignore_blank:
-                # 使用Find跳过空白
-                find = selection.Find
-                find.ClearFormatting()
-                find.Text = ""  # 匹配任意非空白字符
-                find.Forward = (self.direction == "right")
-                find.Wrap = 0  # wdFindStop
-                found = find.Execute()
-                if found:
-                    selection.Collapse(
-                        Direction=self.consts["COLLAPSE_MAP"][self.direction]
-                    )
-                else:
-                    return False, "未找到非空白内容"
-            else:
+                # 设置选区范围
                 if self.direction == "left":
-                    selection.Collapse(self.consts["COLLAPSE_MAP"]["left"])
-                    selection.MoveStart(Unit=unit, Count=1)
+                    range.End = selection.Start
                 else:
-                    selection.Collapse(self.consts["COLLAPSE_MAP"]["right"])
-                    selection.MoveEnd(Unit=unit, Count=1)
+                    range.Start = selection.End
+                selection.SetRange(range.Start, range.End)
+        else:
+            # 移动模式
+            if self.ignore_blank:
+                success, message = self._move_with_non_blank(context, range)
+                if not success:
+                    return False, message
+
+            # 折叠光标到指定方向
+            selection.Collapse(Direction=collapse_direction)
+
         return True, None
 
-    def _move_with_non_blank(self, context, unit):
-        find = context.selection.Find
+    def _move_with_non_blank(self, context, range):
+        """在指定范围内跳过空白，直到找到第一个非空白字符"""
+        range.Expand(Unit=context.consts["UNIT_MAP"][self.content[0]])  # 扩展到目标范围
+        find = range.Find
         find.ClearFormatting()
-        find.Text = ""  # 匹配任意非空白字符
+        find.Text = "[^\s]"  # 匹配非空白字符
+        find.MatchWildcards = True
         find.Forward = (self.direction == "right")
-        find.Wrap = self.consts["FIND_WRAP"]["wdFindStop"]
+        find.Wrap = context.consts["FIND_WRAP"]["wdFindStop"]
+
         found = find.Execute()
         if found:
             context.selection.Collapse(
-                Direction=self.consts["COLLAPSE_MAP"][self.direction]
+                Direction=context.consts["COLLAPSE_MAP"][self.direction]
             )
+            return True, None
         else:
             return False, "未找到非空白内容"
 
+    def _select_with_non_blank(self, context, range):
+        """在指定范围内选择直到第一个非空白字符"""
+        range.Expand(Unit=context.consts["UNIT_MAP"][self.content[0]])  # 扩展到目标范围
+        find = range.Find
+        find.ClearFormatting()
+        find.Text = "[^\s]"  # 匹配非空白字符
+        find.MatchWildcards = True
+        find.Forward = (self.direction == "right")
+        find.Wrap = context.consts["FIND_WRAP"]["wdFindStop"]
+
+        found = find.Execute()
+        if found:
+            # 设置选区范围
+            if self.direction == "left":
+                range.End = find.Parent.End
+            else:
+                range.Start = find.Parent.Start
+            context.selection.SetRange(range.Start, range.End)
+            return True, None
+        else:
+            return False, "未找到非空白内容"
 class InsertSpecialCommand(Command):
-    def office_word_check(self):
-        if self.content not in self.consts["SYMBOL_MAP"]:
+    def office_word_check(self, context: ActionContext):
+        if self.content not in context.consts["SYMBOL_MAP"]:
             raise ValueError("参数非法: content")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionIP"]:
+        if context.selection.Type != context.consts["SELECTION_TYPE"]["wdSelectionIP"]:
             return False, "当前处于选中状态，无法执行插入操作"
-        symbol = self.consts["SYMBOL_MAP"][self.content]
+        symbol = context.consts["SYMBOL_MAP"][self.content]
         context.selection.InsertBreak(symbol)
         return True, None
 
 class InsertTextCommand(Command):
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if not self.content:
             raise ValueError("参数非法: content")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionIP"]:
+        if context.selection.Type != context.consts["SELECTION_TYPE"]["wdSelectionIP"]:
             return False, "当前处于选中状态，无法执行插入操作"
         context.selection.TypeText(self.content)
         return True, None
 
-class SelectCurrentScopeCommand(Command):
-    def __init__(self, scope_type, **kwargs):
-        self.scope_type = scope_type
-        super().__init__(**kwargs)
 
-    def office_word_check(self):
-        if self.scope_type not in self.consts["SCOPE_MAP"]:
-            raise ValueError("参数非法: scope_type")
+class SelectCurrentScopeCommand(Command):
+    def office_word_check(self, context: ActionContext):
+        if self.content not in context.consts["SCOPE_MAP"]:
+            raise ValueError("参数非法: content")
 
     def office_word_run(self, context: ActionContext):
-        context.selection.Expand(self.consts["SCOPE_MAP"][self.scope_type])
+        context.selection.Expand(context.consts["SCOPE_MAP"][self.content])
+        # 单独处理表格单元格
+        if self.content == "表格单元格":
+            if not context.selection.Information(context.consts["SELECTION_INFO"]["wdWithInTable"]):
+                return False, "当前光标不在表格单元格内"
+            # 获取当前单元格的范围
+            cell_range = context.selection.Cells(1).Range
+            context.selection.SetRange(cell_range.Start, cell_range.End)
+            return True, None
+        # 处理其他范围
+        context.selection.Expand(context.consts["SCOPE_MAP"][self.content])
         return True, None
+
 
 class SelectUntilCommand(Command):
     def __init__(self, direction, scope, until_type, **kwargs):
@@ -169,7 +201,7 @@ class SelectUntilCommand(Command):
         self.until_type = until_type
         super().__init__(**kwargs)
 
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if self.direction not in ["left", "right"]:
             raise ValueError("参数非法: direction")
         if self.scope not in ["inline", "cell", "paragraph", "page", "doc"]:
@@ -191,12 +223,12 @@ class SelectUntilCommand(Command):
         return True, None
 
 class ReplaceTextCommand(Command):
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if not self.content:
             raise ValueError("参数非法: content")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionNormal"]:
+        if context.selection.Type == context.consts["SELECTION_TYPE"]["cursor"]:
             return False, "当前未选中内容，无法执行替换操作"
         context.selection.Text = self.content
         return True, None
@@ -206,12 +238,12 @@ class UpdateFontCommand(Command):
         self.attribute = attribute
         super().__init__(**kwargs)
 
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if self.attribute not in ["family", "size"]:
             raise ValueError("参数非法: attribute")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionNormal"]:
+        if context.selection.Type not in context.consts["SELECTION_STATE"]:
             return False, "需要选中内容才能修改字体"
         font = context.selection.Font
         if self.attribute == "family":
@@ -225,12 +257,12 @@ class AdjustFontSizeCommand(Command):
         self.step = step
         super().__init__(**kwargs)
 
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if not isinstance(self.step, int):
             raise ValueError("参数非法: step")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionNormal"]:
+        if context.selection.Type not in  context.consts["SELECTION_TYPE"]["text"]:
             return False, "需要选中内容才能调整字号"
         current_size = context.selection.Font.Size
         new_size = current_size + (self.step * 2)
@@ -242,12 +274,12 @@ class UpdateFontColorCommand(Command):
         self.color_mode = color_mode
         super().__init__(**kwargs)
 
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if self.color_mode != "preset":
             raise ValueError("参数非法: color_mode")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionNormal"]:
+        if context.selection.Type not in context.consts["SELECTION_TYPE"]["text"]:
             return False, "需要选中内容才能修改颜色"
         color_map = {"红色": 0xFF0000, "蓝色": 0x0000FF, "绿色": 0x00FF00}
         context.selection.Font.Color = color_map.get(self.content, 0x000000)
@@ -259,26 +291,26 @@ class UpdateParagraphCommand(Command):
         self.line_spacing_type = line_spacing_type
         super().__init__(**kwargs)
 
-    def office_word_check(self):
+    def office_word_check(self, context: ActionContext):
         if self.attribute not in ["line_spacing", "alignment"]:
             raise ValueError("参数非法: attribute")
 
     def office_word_run(self, context: ActionContext):
-        if context.selection.Type != self.consts["SELECTION_TYPE"]["wdSelectionNormal"]:
+        if context.selection.Type not in context.consts["SELECTION_TYPE"]["text"]:
             return False, "需要选中内容才能修改段落格式"
         paragraph = context.selection.ParagraphFormat
         if self.attribute == "line_spacing":
             if self.line_spacing_type == "times":
-                paragraph.LineSpacingRule = self.consts["ROW_SPACING_MAP"]["倍数行距"]
+                paragraph.LineSpacingRule = context.consts["ROW_SPACING_MAP"]["倍数行距"]
                 paragraph.LineSpacing = float(self.content)
             elif self.line_spacing_type == "min_bounds":
-                paragraph.LineSpacingRule = self.consts["ROW_SPACING_MAP"]["最小行距"]
+                paragraph.LineSpacingRule = context.consts["ROW_SPACING_MAP"]["最小行距"]
                 paragraph.LineSpacing = float(self.content)
             else:
-                paragraph.LineSpacingRule = self.consts["ROW_SPACING_MAP"]["固定行距"]
+                paragraph.LineSpacingRule = context.consts["ROW_SPACING_MAP"]["固定行距"]
                 paragraph.LineSpacing = float(self.content)
         else:
-            paragraph.Alignment = self.consts["ALIGN_MAP"][self.content]
+            paragraph.Alignment = context.consts["ALIGN_MAP"][self.content]
         return True, None
 
 

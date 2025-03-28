@@ -236,22 +236,39 @@ def has_content_in_scene_folder():
     return False
 
 
+text = """
+
+
+    该同志政治立场坚定，坚定“四个自信”，具有“四个意识”，做到“两个维护”，深刻认识“两个确立”的重大意义。热爱教师职业，肯于钻研，勤于总结，善于表达，工作踏实认真。遵纪守法，遵守学术规范和教师行为规范。
+
+
+
+
+
+
+
+
+                    
+单位党组织盖章：
+
+
+                                  2025年2月24日"""
 ACTION_SUITS = {
     "政审处理": [
         {"action_spliter": "1. 修改政审意见", "bg_color": COLOR_YELLOW},
         # 1. 搜索定位 姓名
-        {"action_id": "search_first_and_move_left", "params": {"content": "姓名"}},
+        {"action_id": "search_first_and_move_right", "params": {"content": "姓名"}},
         # 2. 光标移动
         {"action_id": "move_right_chars", "params": {"content": 1}},
-        {"action_id": "move_down_lines", "params": {"content": 3}},
+        {"action_id": "move_down_lines", "params": {"content": 5}},
         # 3. 选择
         {"action_id": "select_current_scope", "params": {"content": "表格单元格"}},
         # 4. 替换
-        {"action_id": "replace_text", "params": {"content": ""}},
+        {"action_id": "replace_text", "params": {"content": text}},
 
         {"action_spliter": "2. 修改第一部分字体", "bg_color": COLOR_YELLOW},
         # 5. 选择第一部分
-        {"action_id": "move_prev_to_landmark_only_text", "params": {"content": "当前单元格开头"}},
+        {"action_id": "move_prev_to_landmark_only_text", "params": {"content": "当前单元格开头"}},  # TODO 未测试通过
         {"action_id": "select_current_scope", "params": {"content": "段落"}},
         # 6. 修改字体
         {"action_id": "set_font_family", "params": {"content": "宋体"}},

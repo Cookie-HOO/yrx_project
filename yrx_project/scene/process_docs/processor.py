@@ -39,7 +39,6 @@ class ActionProcessor:
 
     def _process_command(self):
         ctx = self.context
-        word = ctx.word
         command_containers = self.command_containers[:]  # 复制一份，避免修改原始列表
         while command_containers:
             command_container = command_containers.pop(0)
@@ -58,20 +57,14 @@ class ActionProcessor:
                 # 2. 执行任务：遍历文件，每个文件都需要执行batch下的所有命令
                 for file_path in ctx.input_paths:  # 这里如何并发执行
                     ctx.file_path = file_path
-                    doc = word.Documents.Open(os.path.abspath(file_path))
-                    ctx.selection = word.Selection
-                    ctx.doc = doc
+                    ctx.into_file(file_path)
                     for command in command_container.commands:
                         ctx.command = command
                         command.run(ctx)
                         ctx.done_task()
                         if self.after_each_action_func is not None:
                             self.after_each_action_func(ctx)
-                    ctx.done_file()
-                    doc.Save()
-                    # doc.Close()
-                    ctx.doc = None
-                    ctx.selection = None
+
             # 混合型任务: 不会修改inputs路径的文件，命令内部完成将ctx的input_path指向新的路径
             else:
                 for command in command_container.commands:
@@ -84,26 +77,14 @@ class ActionProcessor:
                         self.after_each_action_func(ctx)
 
     def process(self, file_paths, **kwargs):
-        import pythoncom
-        import win32com.client as win32
-        pythoncom.CoInitialize()
-        word = win32.gencache.EnsureDispatch('Word.Application')
-        word.Visible = False
-        self.context.word = word
-        self.context.init_input_paths = file_paths
-        self.context.input_paths = file_paths
+        self.context.init(file_paths)
         try:
-            self.command_manager.cleanup(file_paths)
             self._process_command()
         except Exception as e:
             print(f"Processing error: {str(e)}")
             raise
         finally:
-            try:
-                word.Quit()
-            except:
-                pass
-            self.context.word = None
-            pythoncom.CoUninitialize()
+            self.context.cleanup()
+            log = self.context.log_df
         return
 
