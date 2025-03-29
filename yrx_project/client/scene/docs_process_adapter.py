@@ -1,5 +1,7 @@
 import json
 import os
+from typing import List, Dict, Optional, Callable
+
 import shutil
 from multiprocessing import cpu_count, Pool
 
@@ -43,15 +45,12 @@ def get_docx_pages_with_multiprocessing(file_paths):
     return results
 
 
-import os
-from typing import List, Dict, Optional, Callable
-
 class ActionRunner:
     def __init__(
         self,
         input_paths: List[str],
         df_actions,
-        after_each_action_func: Optional[Callable[[Dict], None]] = None,
+        after_each_action_func: Optional[Callable[[ActionContext], None]] = None,
     ):
         self.input_paths = input_paths
         self.df_actions = df_actions
@@ -85,12 +84,15 @@ class ActionRunner:
         )
         # 初始化上下文但不立即执行
         self.processor.init_context(self.input_paths)
+        self.processor.process_next_or_init()
 
-    def next_action(self) -> bool:
-        """执行下一步动作，返回是否还有后续动作"""
+    def next_action_or_cleanup(self) -> bool:
+        """执行下一步动作，返回是否还有后续动作
+        最后需要再推一次进行清理
+        """
         if not self.processor:
             raise RuntimeError("Debug mode not initialized. Call debug_actions() first.")
-        return self.processor.process_next()
+        return self.processor.process_next_or_init()
 
 
 
@@ -219,13 +221,13 @@ def build_action_suit_menu(table_wrapper: TableWidgetWrapper):
             "func": lambda _: action_suit_table.copy2clipboard(),
         },
 
-        {
-            "type": "menu_spliter",
-        },
-        {
-            "type": "menu_action", "name": "🏃查看当前逻辑计划执行图",
-            "func": lambda _: 1,  # todo
-        }
+        # {
+        #     "type": "menu_spliter",
+        # },
+        # {
+        #     "type": "menu_action", "name": "🏃查看当前逻辑计划执行图",
+        #     "func": lambda _: 1,  # todo
+        # }
     ]
 
     return menu_list
@@ -374,10 +376,10 @@ ACTION_SUITS = {
     "政审处理": [
         {"action_spliter": "1. 修改政审意见", "bg_color": COLOR_YELLOW},
         # 1. 搜索定位 姓名
-        {"action_id": "search_first_and_move_right", "content": "姓名"},
+        {"action_id": "search_first_and_move_right", "content": "民族"},
         # 2. 光标移动
-        {"action_id": "move_right_chars", "content": 1},
-        {"action_id": "move_down_lines", "content": 5},
+        # {"action_id": "move_right_chars", "content": 1},
+        {"action_id": "move_down_lines", "content": 3},
         # 3. 选择
         {"action_id": "select_current_scope", "content": "表格单元格"},
         # 4. 替换
@@ -385,18 +387,18 @@ ACTION_SUITS = {
 
         {"action_spliter": "2. 修改第一部分字体", "bg_color": COLOR_YELLOW},
         # 5. 选择第一部分
-        {"action_id": "move_prev_to_landmark_only_text", "content": "当前单元格开头"},  # TODO 未测试通过
-        {"action_id": "select_current_scope", "content": "段落"},
+        # {"action_id": "move_prev_to_landmark_only_text", "content": "当前单元格开头"},  # TODO 未测试通过
+        # {"action_id": "select_current_scope", "content": "段落"},
         # 6. 修改字体
         {"action_id": "set_font_family", "content": "宋体"},
-        {"action_id": "set_font_color_custom", "content": "#000000"},
-        {"action_id": "set_font_size", "content": "14pt"},
-
-        {"action_spliter": "3. 修改第二部分字体", "bg_color": COLOR_YELLOW},
-        # 7. 选中第二部分，设置字体
-        {"action_id": "select_next_to_landmark_only_text", "content": "当前单元格结尾"},
-        {"action_id": "set_font_family", "content": "宋体"},
-        {"action_id": "set_font_size", "content": "10pt"},
+        # {"action_id": "set_font_color_custom", "content": "#000000"},
+        {"action_id": "set_font_size", "content": "小四"},
+        #
+        # {"action_spliter": "3. 修改第二部分字体", "bg_color": COLOR_YELLOW},
+        # # 7. 选中第二部分，设置字体
+        # {"action_id": "select_next_to_landmark_only_text", "content": "当前单元格结尾"},
+        # {"action_id": "set_font_family", "content": "宋体"},
+        # {"action_id": "set_font_size", "content": "10pt"},
 
         # 9. 合并文档
         {"action_spliter": "4. 合并文档", "bg_color": COLOR_YELLOW},

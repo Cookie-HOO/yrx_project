@@ -11,7 +11,7 @@ class SearchTextCommand(Command):
         super().__init__(**kwargs)
 
     def office_word_check(self, context: ActionContext):
-        if self.pointer_after_search not in context.consts["COLLAPSE_MAP"]:
+        if self.pointer_after_search and self.pointer_after_search not in context.consts["COLLAPSE_MAP"]:
             raise ValueError("参数非法: pointer_after_search")
         if not self.content:
             raise ValueError("参数非法: content")
@@ -101,7 +101,7 @@ class MoveCursorUntilSpecialCommand(Command):
         else:
             # 移动模式
             if self.ignore_blank:
-                success, message = self._move_with_non_blank(context, range)
+                success, message = self._move_with_non_blank(context, range, unit)
                 if not success:
                     return False, message
 
@@ -110,9 +110,9 @@ class MoveCursorUntilSpecialCommand(Command):
 
         return True, None
 
-    def _move_with_non_blank(self, context, range):
+    def _move_with_non_blank(self, context, range, unit):
         """在指定范围内跳过空白，直到找到第一个非空白字符"""
-        range.Expand(Unit=context.consts["UNIT_MAP"][self.content[0]])  # 扩展到目标范围
+        range.Expand(Unit=unit)  # 扩展到目标范围
         find = range.Find
         find.ClearFormatting()
         find.Text = "[^\s]"  # 匹配非空白字符
@@ -222,6 +222,12 @@ class SelectUntilCommand(Command):
         context.selection.MoveEndUntil(self.content if self.until_type == "custom" else "\r")
         return True, None
 
+
+class DeleteCommand(Command):
+    def office_word_run(self, context: ActionContext):
+        pass
+
+
 class ReplaceTextCommand(Command):
     def office_word_check(self, context: ActionContext):
         if not self.content:
@@ -234,6 +240,24 @@ class ReplaceTextCommand(Command):
         return True, None
 
 class UpdateFontCommand(Command):
+    CHINESE_FONT_SIZE_MAP = {
+        "初号": 42.0,
+        "小初": 36.0,
+        "一号": 26.0,
+        "小一": 24.0,
+        "二号": 22.0,
+        "小二": 18.0,
+        "三号": 16.0,
+        "小三": 15.0,
+        "四号": 14.0,
+        "小四": 12.0,
+        "五号": 10.5,
+        "小五": 9.0,
+        "六号": 7.5,
+        "小六": 6.5,
+        "七号": 5.5,
+        "八号": 5.0
+    }
     def __init__(self, attribute, **kwargs):
         self.attribute = attribute
         super().__init__(**kwargs)
@@ -249,7 +273,7 @@ class UpdateFontCommand(Command):
         if self.attribute == "family":
             font.Name = self.content
         else:
-            font.Size = float(self.content[:-2]) if self.content.endswith("pt") else self.content
+            font.Size = float(self.content[:-2]) if self.content.endswith("pt") else self.CHINESE_FONT_SIZE_MAP.get(self.content)
         return True, None
 
 class AdjustFontSizeCommand(Command):

@@ -19,6 +19,8 @@ class ButtonMenuWrapper:
         self.button_widget = button_widget
         self.menu_list = menu_list
 
+        self.original_tooltips = {}  # 存储原始提示信息（禁用时会覆盖，恢复时需要恢复提示）
+
         # 初始化并绑定菜单
         self._build_menu()
 
@@ -81,3 +83,158 @@ class ButtonMenuWrapper:
             elif child["type"] == "menu_spliter":
                 # 分隔线
                 sub_menu.addSeparator()
+
+    def disable_click(self, paths=None, msg=None):
+        """
+        禁用按钮交互并设置提示
+        :param paths: 索引路径列表（例如[[0], [1, 0]]）
+        :param msg: 禁用提示信息（如"功能维护中"）
+        """
+        if paths is None:
+            # 禁用整个按钮
+            self._store_tooltip(('button',), self.button_widget.toolTip())
+            self.button_widget.setEnabled(False)
+            if msg:
+                self.button_widget.setToolTip(msg)
+            self._disable_all_menu_items(self.button_widget.menu(), msg)
+        else:
+            # 禁用指定路径
+            for path in paths:
+                action = self._find_action_by_index_path(path)
+                if action:
+                    key = tuple(path)
+                    self._store_tooltip(key, action.toolTip())
+                    action.setEnabled(False)
+                    if msg:
+                        action.setToolTip(msg)
+
+    def _store_tooltip(self, path_key, original_tip):
+        """保存原始提示信息"""
+        if path_key not in self.original_tooltips:
+            self.original_tooltips[path_key] = original_tip
+
+    def _disable_all_menu_items(self, menu, msg=None):
+        """递归禁用所有菜单项并设置提示"""
+        if not menu:
+            return
+
+        for idx, action in enumerate(menu.actions()):
+            if action.isSeparator():
+                continue
+
+            # 存储原始提示
+            path = self._get_action_path(action)
+            if path:
+                self._store_tooltip(path, action.toolTip())
+
+            # 设置禁用状态和提示
+            action.setEnabled(False)
+            if msg:
+                action.setToolTip(msg)
+
+            # 递归处理子菜单
+            if action.menu():
+                self._disable_all_menu_items(action.menu(), msg)
+
+    def enable_click(self):
+        """启用所有功能并恢复提示"""
+        # 恢复按钮状态
+        self.button_widget.setEnabled(True)
+        self._restore_tooltip(('button',))
+
+        # 恢复菜单项
+        if self.button_widget.menu():
+            self._enable_all_menu_items(self.button_widget.menu())
+
+    def _enable_all_menu_items(self, menu):
+        """递归启用菜单项并恢复提示"""
+        if not menu:
+            return
+
+        for action in menu.actions():
+            if action.isSeparator():
+                continue
+
+            # 恢复提示
+            path = self._get_action_path(action)
+            if path:
+                self._restore_tooltip(path)
+
+            # 启用菜单项
+            action.setEnabled(True)
+
+            # 递归处理子菜单
+            if action.menu():
+                self._enable_all_menu_items(action.menu())
+
+    def _restore_tooltip(self, path_key):
+        """恢复原始提示信息"""
+        if path_key in self.original_tooltips:
+            original = self.original_tooltips.pop(path_key)
+            if path_key == ('button',):
+                self.button_widget.setToolTip(original)
+            else:
+                action = self._find_action_by_index_path(list(path_key))
+                if action:
+                    action.setToolTip(original)
+
+    def _find_action_by_index_path(self, path):
+        """根据索引路径查找菜单项"""
+
+        def search_menu(menu, depth=0):
+            if not menu or depth >= len(path):
+                return None
+
+            current_index = path[depth]
+            valid_count = 0
+
+            for action in menu.actions():
+                # 跳过分隔线
+                if action.isSeparator():
+                    continue
+
+                if valid_count == current_index:
+                    if depth == len(path) - 1:
+                        return action
+                    if action.menu():
+                        return search_menu(action.menu(), depth + 1)
+                    return None
+                valid_count += 1
+
+            return None
+
+        return search_menu(self.button_widget.menu())
+
+    def _get_action_path(self, target_action):
+        """逆向查找动作的索引路径"""
+        path = []
+        menu = self.button_widget.menu()
+        parent_menu = target_action.parentWidget()
+
+        # 向上追溯菜单层级
+        while parent_menu and parent_menu != menu:
+            # 在父菜单中查找当前菜单的索引
+            parent_parent = parent_menu.parentWidget()
+            if not parent_parent:
+                break
+
+            index = 0
+            for action in parent_parent.actions():
+                if action.menu() == parent_menu:
+                    path.insert(0, index)
+                    break
+                if not action.isSeparator():
+                    index += 1
+            parent_menu = parent_parent
+
+        # 添加顶层索引
+        if parent_menu == menu:
+            index = 0
+            for action in menu.actions():
+                if action == target_action or action.menu() == parent_menu:
+                    path.insert(0, index)
+                    break
+                if not action.isSeparator():
+                    index += 1
+
+        return tuple(path) if path else None

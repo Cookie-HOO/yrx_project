@@ -34,7 +34,7 @@ class ActionProcessor:
     def __init__(
         self,
         config: List[Dict],
-        after_each_action_func: Optional[Callable[[Dict], None]] = None,
+        after_each_action_func: Optional[Callable[[ActionContext], None]] = None,
         debug_mode: bool = False
     ):
         self.command_manager = self._parse_config(config)
@@ -54,7 +54,7 @@ class ActionProcessor:
 
     def init_context(self, input_paths: List[str]):
         """初始化执行上下文"""
-        self.context.init(input_paths, command_manager=self.command_manager, debug_mode=True)
+        self.context.init(input_paths, command_manager=self.command_manager, debug_mode=self.debug_mode)
 
     def _batch_execution_generator(self) -> Generator:
         """批处理任务执行生成器"""
@@ -77,6 +77,7 @@ class ActionProcessor:
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     copy_file(src, dst)
                 ctx.input_paths = input_paths
+                ctx.total_task_num = len(ctx.input_paths) * ctx.command_container.commands_num
 
                 # 遍历文件
                 for file_idx, file_path in enumerate(ctx.input_paths[self.current_file_idx:],
@@ -89,28 +90,31 @@ class ActionProcessor:
                     cmds = container.commands[self.current_cmd_idx:]
                     for cmd_idx, cmd in enumerate(cmds, start=self.current_cmd_idx):
                         ctx.command = cmd
+                        yield  # 暂停点
                         cmd.run(ctx)
                         ctx.done_task()
                         self.current_cmd_idx = cmd_idx
                         if self.after_each_action_func:
-                            self.after_each_action_func(ctx.get_state())
-                        yield  # 暂停点
+                            self.after_each_action_func(ctx)
 
                     self.current_cmd_idx = 0  # 重置命令索引
                 self.current_file_idx = 0  # 重置文件索引
 
             else:
-                # 普通任务执行
+                # 混合任务
+                ctx.file_path = None
                 cmds = container.commands[self.current_cmd_idx:]
                 for cmd_idx, cmd in enumerate(cmds, start=self.current_cmd_idx):
                     ctx.command = cmd
+                    yield  # 暂停点
                     cmd.run(ctx)
                     ctx.done_task()
                     self.current_cmd_idx = cmd_idx
                     if self.after_each_action_func:
-                        self.after_each_action_func(ctx.get_state())
-                    yield  # 暂停点
+                        self.after_each_action_func(ctx)
                 self.current_cmd_idx = 0
+
+        yield  # 最后需要停止一下，再推一次进行清理
 
     def process(self, input_paths: List[str]):
         """执行入口（非调试模式直接运行）"""
@@ -119,8 +123,8 @@ class ActionProcessor:
             for _ in self._batch_execution_generator():
                 pass
 
-    def process_next(self) -> bool:
-        """执行下一步，返回是否完成"""
+    def process_next_or_init(self) -> bool:
+        """执行下一步，返回是否完成，最后还需要推一次进行清理"""
         if not self.execution_gen:
             self.execution_gen = self._batch_execution_generator()
         try:

@@ -51,22 +51,26 @@ class ActionContext:
         self.lock_file_num = Lock()
         self.lock_log = Lock()
 
-    @property
-    def log_df(self):
-        log_df = self.log_df_[["level", "msg", "file_name_without_extension"]]
-        log_df["action_name"] = self.log_df_["command_ins"].apply(lambda x: x.action_name)
-        log_df["action_content"] = self.log_df_["command_ins"].apply(lambda x: x.content)
-        return log_df
+    def get_show_msg(self):
+        return (f"当前阶段: {self.command_container.step}/{len(self.command_manager.command_containers)} "
+                f"阶段进度: {self.done_file_num/self.total_task_num*100}%; "
+                f"当前文件: {self.done_file_num}/{len(self.input_paths) * 100}%; "
+                f"动作: {self.command.action_name}; 文件: {self.file_name_without_extension}")
+
+    def get_log_df(self):
+        try:
+            log_df = self.log_df_[["level", "msg", "file_name_without_extension"]]
+            log_df["action_name"] = self.log_df_["command_ins"].apply(lambda x: x.action_name)
+            log_df["action_content"] = self.log_df_["command_ins"].apply(lambda x: x.content)
+            return log_df
+        except AttributeError as e:
+            raise AttributeError("log_df_ not initialized") from e
 
     def __getattr__(self, item):
-        try:
+        # 先检查是否是当前类应该处理的属性
+        if item in ["word", "doc", "selection", "consts"]:  # 代理对这三个属性的访问：
             return getattr(self.office_word_ctx, item)
-            # if item in self.office_word_ctx.__dict__:
-            #     return getattr(self.office_word_ctx, item)
-            # else:
-            #     raise AttributeError(f"'{type(self.office_word_ctx).__name__}' object has no attribute '{item}'")
-        except Exception as e:
-            raise AttributeError(f"Error accessing attribute '{item}': {e}")
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{item}'")
 
     def init(self, file_paths, command_manager, debug_mode=False):
         # 初始化逻辑
@@ -89,7 +93,9 @@ class ActionContext:
 
     @property
     def file_name_without_extension(self):
-        return get_file_name_without_extension(self.file_path)
+        if self.file_path:
+            return get_file_name_without_extension(self.file_path)
+        return "---"
 
     def done_task(self):  # 多进程级别保证同步
         with self.lock_task_num:
@@ -99,9 +105,9 @@ class ActionContext:
         with self.lock_file_num:
             self.done_file_num += 1
 
-    def add_log(self, level, msg, file_name_without_extension):
+    def add_log(self, level, msg, file_name_without_extension, command_ins):
         new_row = pd.DataFrame(
-            [[level, msg, file_name_without_extension, self]],
+            [[level, msg, file_name_without_extension, command_ins]],
             columns=self.columns,
         )
         with self.lock_log:
@@ -121,13 +127,15 @@ class Command(OfficeWordImplBase):
         self.action_name = action_name
 
     def run(self, context: ActionContext):
-        self.office_word_check(context)
         try:
+            self.office_word_check(context)
             success, msg = self.office_word_run(context)
-            context.add_log("info" if success else "warn", msg or "", context.file_name_without_extension)
+            if success:
+                msg = "✅执行成功"
+            context.add_log("info" if success else "warn", msg or "", context.file_name_without_extension, self)
             return success
         except Exception as e:
-            context.add_log("error", str(e), context.file_name_without_extension)
+            context.add_log("error", str(e), context.file_name_without_extension, self)
             return False
 
     def is_mixing(self):

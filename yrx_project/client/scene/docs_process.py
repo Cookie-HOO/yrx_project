@@ -26,7 +26,6 @@ class Worker(BaseWorker):
     custom_after_upload_signal = pyqtSignal(dict)  # 自定义信号
     # custom_after_add_condition_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_run_signal = pyqtSignal(dict)  # 自定义信号
-    custom_update_progress_signal = pyqtSignal(float)
     # custom_view_result_signal = pyqtSignal(dict)  # 自定义信号
     # custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
     # custom_preview_df_signal = pyqtSignal(dict)  # 自定义信号
@@ -92,23 +91,15 @@ class Worker(BaseWorker):
             # df_docs = self.get_param("df_docs")
             # df_actions = self.get_param("df_actions")
             action_runner: ActionRunner = self.get_param("action_runner")
-
-            def callback(ctx: ActionContext):
-                file_name = "--"
-                if ctx.file_path:
-                    file_name = get_file_name_without_extension(ctx.file_path)
-                self.refresh_signal.emit(f"文档处理中...阶段: {ctx.command_container.step_and_name} 进度：{ctx.done_task_num}/{ctx.total_task_num}; 文件: {file_name}: 操作: {ctx.command.action_name}")
-                self.custom_update_progress_signal.emit(ctx.done_task_num / ctx.total_task_num)
-
-            action_runner.after_each_action_func = callback
+            action_runner.after_each_action_func = lambda ctx: self.refresh_signal.emit(f"文档处理中: {ctx.get_show_msg()}")
             action_runner.run_actions()
 
             # 设置执行信息
             duration = round((time.time() - start_run_time), 2)
-            tip = f"✅执行成功"
+            tip = f"✅处理成功，共耗时：{duration}秒"
 
             status_msg = \
-                f"✅批量文档处理成功，共耗时：{duration}秒"
+                f"✅处理成功，共耗时：{duration}秒"
 
             self.custom_after_run_signal.emit({
                 "tip": tip,
@@ -200,7 +191,6 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
                 run_log_button：执行按钮
                 result_detail_text：执行详情
                      🚫执行耗时：--毫秒
-                run_progress_bar：进度条
                 download_result_button: 下载结果按钮
                 result_tree：结果文件的树状结构
             第四步（可选）：调试：单步执行
@@ -402,7 +392,6 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
 
         # 布局修改
         ## 1. 上下布局可移动
-        # self.line_splitter = LineSplitterWrapper(self.main_line)  # todo 目前line不在布局中，无法测试
         # 在代码中设置 Splitter 样式
         self.splitter_design = LineSplitterWrapper(self.splitter)
         # 1. 批量上传文档
@@ -431,7 +420,6 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # self.odd_cols_index, self.even_cols_index, self.overall_cols_index = None, None, None  # 用来标记颜色
         # self.match_for_main_col = None  # 主表匹配列的映射
         self.run_button.clicked.connect(self.run)
-        self.run_progress_bar.setValue(0)  # 初始化进度条
         self.tree_file_wrapper = TreeFileWrapper(
             self.result_tree, SCENE_TEMP_PATH,
             on_double_click=lambda f: open_file_or_folder(f),
@@ -453,13 +441,15 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # self.view_result_button.clicked.connect(self.view_result)
 
         # 第四步骤：调试
+        self.debug_current_step = None
+        self.action_runner: typing.Optional[ActionRunner] = None
         self.debug_file_paths = []  # 用于debug的输入路径
         self.debug_button.clicked.connect(self.debug_run)
-
+        self.debug_next_button.clicked.connect(self.debug_next)
         self.actions_with_log_table_wrapper = TableWidgetWrapper(self.actions_with_log_table, disable_edit=True).set_col_width(1, 320).set_col_width(3, 140)
 
     def right_click_menu_save_file(self, path):
-        save_to = self.download_file_modal(get_file_name_with_extension(path))
+        save_to = self.download_file_modal(TimeObj().time_str + get_file_name_with_extension(path))
         if save_to:
             copy_file(path, save_to)
             self.modal(level="info", msg="✅下载成功")
@@ -717,9 +707,6 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     #          "role": QMessageBox.ActionRole},
     #     ])
 
-    def custom_update_progress(self, value, *args, **kwargs):
-        self.run_progress_bar.setValue(int(value * 100))  # 0-100的整数
-
     def debug_run(self):
         # 0. 至少上传了一个文件
         df_docs = self.docs_tables_wrapper.get_data_as_df()
@@ -732,7 +719,9 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         base_names = [get_file_name_without_extension(i) for i in paths]
 
         # 1. 弹窗确认是否开始调试，以及列出所有文件让用户选择一个文件开始调试，默认第一个
-        selected_index, yes_or_no = self.list_modal(list_items=base_names, cur_index=0, msg="指定输入文件开始调试")
+        selected_index, yes_or_no = self.list_modal(
+            list_items=base_names, cur_index=0, msg="指定输入文件开始调试（开始调试后无法修改动作流）"
+        )
         if yes_or_no:
             self.debug_file_paths = base_names[selected_index]
         if len(self.debug_file_paths) == 0:
@@ -742,7 +731,7 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # 设置调试步骤（下一步的按钮需要）
         # 将第一步写到table中，增加一个行👉icon
         # 初始化执行环境：打开word
-        self.debug_step = 0
+        self.actions_table_wrapper.disable_edit()
         action = df_actions.iloc[0,:]
         values = [
             action["类型"], action["动作"], action["动作内容"]
@@ -755,6 +744,64 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
             input_paths=paths,
             df_actions=df_actions,
         )
-        action_runner.debug_actions()
+        self.action_runner = action_runner
+        try:
+            action_runner.debug_actions()
+            self.start_debug_mode()
+        except Exception as e:
+            self.actions_with_log_table_wrapper.clear()
+            return self.modal(level="error", msg="初始化调试模式报错，尝试关闭相关文档再试"+str(e))
 
+    def debug_next(self):
+        if self.debug_current_step is None:
+            return self.modal(level="warn", msg="请先进入调试模式")
+        if self.action_runner is None:
+            return self.modal(level="error", msg="未知错误，请重置")
+        processor = self.action_runner.processor
+        if processor is None:
+            return self.modal(level="error", msg="未初始化processor")
+
+        # 执行下一步
+        self.action_runner.next_action_or_cleanup()
+        self.debug_current_step += 1
+        # 1. 修改这一步的日志
+        log_row = processor.context.get_log_df().iloc[-1, :]  # 最后一行的日志
+        level, msg = log_row["level"], log_row["msg"]
+        self.actions_with_log_table_wrapper.set_cell_value(self.debug_current_step-1, 3, level+":" + msg)
+        actions_log_df = self.actions_with_log_table_wrapper.get_data_as_df()
+        result_list = [
+            "✅" if row.startswith("info") else
+            "⚠️" if row.startswith("warn") else
+            "❌" if row.startswith("error") else None
+            for row in actions_log_df["调试信息"]
+        ]
+        self.actions_with_log_table_wrapper.set_vertical_header(result_list)
+
+        # 3. 增加下一步的记录
+        # 检查是否已结束
+        df_actions = self.actions_table_wrapper.get_data_as_df()
+        if self.debug_current_step >= len(df_actions):
+            return self.end_debug_mode()
+
+        action = df_actions.iloc[self.debug_current_step,:]
+        values = [
+            action["类型"], action["动作"], action["动作内容"]
+        ]
+        self.actions_with_log_table_wrapper.add_rich_widget_row([
+            {"type": "readonly_text", "value": str(i)} for i in values
+        ])
+        # 4. 设置表格样式
+        # 设置行头，成功的 ✅，失败的❌，当前的 👉 不符合预期的 ⚠️
+        self.actions_with_log_table_wrapper.set_vertical_header(result_list+["👉"])
+
+    def start_debug_mode(self):
+        self.debug_current_step = 0
+        self.add_action_button_menu.disable_click(msg="当前处于调试模式，无法增加动作")
+        self.action_suit_button_menu.disable_click([[0], [1]], msg="当前处于调试模式，无法增加动作")
+
+    def end_debug_mode(self):
+        self.modal(level="info", msg="✅调试结束")
+        self.action_runner.next_action_or_cleanup()  # 如果执行完了，这一步就是清理，如果没有执行完，这一步就是向下执行
+        self.add_action_button_menu.enable_click()
+        self.action_suit_button_menu.enable_click()
 

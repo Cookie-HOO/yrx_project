@@ -128,6 +128,12 @@ class TableWidgetWrapper:
         for index in sorted(selected_rows, reverse=True):
             self.table_widget.removeRow(index.row())
 
+    def disable_edit(self):
+        self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
+
+    def enable_edit(self):
+        self.table_widget.setEditTriggers(QTableWidget.EditTrigger)
+
     def set_col_width(self, col_index: int, width: int):
         self.table_widget.setColumnWidth(col_index, width)
         return self
@@ -148,6 +154,13 @@ class TableWidgetWrapper:
             if label is not None:
                 return label.text()
         return None
+
+    def set_cell_value(self, row: int, column: int, value_or_widget):
+        if isinstance(value_or_widget, (str, int)):
+            item = QTableWidgetItem(str(value_or_widget))
+            # item.setFlags(Qt.ItemIsEnabled)
+            # item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            self.table_widget.setItem(row, column, item)
 
     def get_cell_value_with_color(self, row: int, column: int) -> (typing.Optional[str], typing.Optional[str]):
         # 尝试获取QTableWidgetItem（普通文本）
@@ -325,7 +338,6 @@ class TableWidgetWrapper:
             if widget2:
                 print(f"Widget2 valid: {widget2.isWidgetType()}")
 
-
     def set_vertical_header(self, headers):
         assert len(headers) == self.row_length()
         self.table_widget.setVerticalHeaderLabels(headers)
@@ -396,7 +408,8 @@ class TableWidgetWrapper:
                 initial_color = QColor(cell.get("value", "#000000"))  # 默认黑色
                 color_btn = ColorPickerToolButton(initial_color)
                 # 绑定回调函数
-                if on_change := cell_options.get("on_change"):
+                on_change = cell_options.get("on_change")
+                if on_change:
                     color_btn.colorChanged.connect(lambda color: on_change(color.name()))
                 self.table_widget.setCellWidget(nex_row_index, col_index, color_btn)
             elif cell_type == "dropdown":

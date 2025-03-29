@@ -164,6 +164,10 @@ action_types.load_from_config({
         ],
     },
     "update": {
+        "delete": [
+            ["delete_select", "删除所选内容（无需输入）", READONLY_TEXT, "删除所选内容", READONLY_VALUE, DeleteCommand,
+             None],
+        ],
         "text": [
             ["replace_text", "替换：[输入] 新文本内容", EDITABLE_TEXT, "输入替换后的完整内容", "", ReplaceTextCommand, None],
         ],
@@ -171,7 +175,7 @@ action_types.load_from_config({
             ["set_font_color_preset", "颜色：[选择] 预设颜色", DROPDOWN, "请选择颜色", ["红色", "蓝色", "绿色"], UpdateFontColorCommand, {"color_mode": "preset"}],
             ["set_font_color_custom", "颜色：[输入] 自定义颜色", EDITABLE_COLOR, "请输入颜色", "#000000", UpdateFontColorCommand, {"color_mode": "custom"}],
             ["set_font_family", "字体：[选择] 字体系列", DROPDOWN, "请选择字体", ["宋体", "黑体", "仿宋", "楷体", "Times New Roman", "Arial"], UpdateFontCommand, {"attribute": "family"}],
-            ["set_font_size", "字号：[选择] 预设字号", DROPDOWN, "请选择字号", ["初号", "一号", "小三", "10pt", "12pt", "14pt", "16pt"], UpdateFontCommand, {"attribute": "size"}],
+            ["set_font_size", "字号：[选择] 预设字号", DROPDOWN, "请选择字号", ["初号", "小初", "一号", "小一", "二号", "小二", "三号", "小三", "四号", "小四", "五号", "小五", "10pt", "12pt", "14pt", "16pt"], UpdateFontCommand, {"attribute": "size"}],
             ["adjust_font_size", "字号调整：[选择] 增大或减小", DROPDOWN, "请选择操作", ["增大一级", "减小一级"], AdjustFontSizeCommand, {"step": 1}],
         ],
         "paragraph": [

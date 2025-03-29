@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1446</width>
-    <height>619</height>
+    <width>1774</width>
+    <height>808</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -97,7 +97,7 @@
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="4,6">
         <item>
          <layout class="QVBoxLayout" name="verticalLayout">
@@ -293,7 +293,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="4,6">
@@ -345,31 +345,14 @@
              </layout>
             </item>
             <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_2"/>
+            </item>
+            <item>
              <layout class="QHBoxLayout" name="horizontalLayout_5">
               <item>
                <widget class="QLabel" name="label">
                 <property name="text">
                  <string>结果文件预览</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="result_detail_text">
-                <property name="text">
-                 <string>🚫执行耗时：--毫秒</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QProgressBar" name="run_progress_bar">
-                <property name="value">
-                 <number>0</number>
-                </property>
-                <property name="textVisible">
-                 <bool>true</bool>
-                </property>
-                <property name="textDirection">
-                 <enum>QProgressBar::TopToBottom</enum>
                 </property>
                </widget>
               </item>
@@ -385,6 +368,13 @@
                  </size>
                 </property>
                </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="result_detail_text">
+                <property name="text">
+                 <string>🚫执行总计耗时：--秒</string>
+                </property>
+               </widget>
               </item>
               <item>
                <widget class="QPushButton" name="download_result_button">

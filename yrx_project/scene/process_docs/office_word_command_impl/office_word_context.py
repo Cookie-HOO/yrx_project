@@ -81,6 +81,29 @@ class OfficeWordContext:
                 # 选中了内置对象：图片等, 选中了独立的形状
                 "obj": [constants.wdSelectionInlineShape, constants.wdSelectionShape,],
             },
+            "SELECTION_INFO": {
+                "wdWithInTable": 14,  # 判断光标是否位于表格单元格内
+                "wdActiveEndAdjustedPageNumber": 1,  # 获取光标所在页面的页码（调整后）
+                "wdActiveEndPageNumber": 3,  # 获取光标所在页面的页码（未调整）
+                "wdActiveEndSectionNumber": 2,  # 获取光标所在的节号
+                "wdAtEndOfRowMarker": 15,  # 判断光标是否位于表格行的末尾标记处
+                "wdFirstCharacterColumnNumber": 9,  # 获取光标所在位置的字符列号
+                "wdFirstCharacterLineNumber": 10,  # 获取光标所在位置的行号
+                "wdHeaderFooterType": 33,  # 获取光标所在的位置是页眉还是页脚
+                "wdHorizontalPositionRelativeToPage": 5,  # 获取光标相对于页面的水平位置
+                "wdHorizontalPositionRelativeToTextBoundary": 7,  # 获取光标相对于文本边界的水平位置
+                "wdInClipboard": 32,  # 判断剪贴板中是否有内容
+                "wdInCommentPane": 28,  # 判断光标是否位于批注窗格中
+                "wdInEndnote": 27,  # 判断光标是否位于尾注中
+                "wdInFootnote": 26,  # 判断光标是否位于脚注中
+                "wdInHeaderFooter": 25,  # 判断光标是否位于页眉或页脚中
+                "wdInMasterDocument": 30,  # 判断光标是否位于主文档中
+                "wdInWordMail": 31,  # 判断光标是否位于 Word 邮件中
+                "wdMaximumNumberOfColumns": 18,  # 获取当前选区的最大列数
+                "wdMaximumNumberOfRows": 17,  # 获取当前选区的最大行数
+                "wdVerticalPositionRelativeToPage": 6,  # 获取光标相对于页面的垂直位置
+                "wdVerticalPositionRelativeToTextBoundary": 8  # 获取光标相对于文本边界的垂直位置
+            },
             "FIND_WRAP": {
                 "wdFindStop": 0,  # 查找到头后停止
                 "wdFindContinue": 1,  # 查找到头后，从另一端继续
