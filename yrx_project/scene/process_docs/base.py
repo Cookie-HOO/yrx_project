@@ -68,13 +68,14 @@ class ActionContext:
         except Exception as e:
             raise AttributeError(f"Error accessing attribute '{item}': {e}")
 
-    def init(self, file_paths):
+    def init(self, file_paths, command_manager, debug_mode=False):
         # 初始化逻辑
         self.init_input_paths = file_paths
         self.input_paths = file_paths
+        self.command_manager = command_manager
         self.command_manager.cleanup(file_paths)
         # 初始化 OfficeWordCtx
-        self.office_word_ctx.init()
+        self.office_word_ctx.init(debug_mode=debug_mode)
 
     def into_file(self, file_path):
         self.office_word_ctx.into_file(file_path)

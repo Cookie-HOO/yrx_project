@@ -14,8 +14,8 @@ from yrx_project.client.utils.tree_file_widget import TreeFileWrapper
 from yrx_project.const import PROJECT_PATH, TEMP_PATH
 from yrx_project.scene.process_docs.base import ActionContext
 from yrx_project.scene.process_docs.const import SCENE_TEMP_PATH
-from yrx_project.client.scene.docs_process_adapter import run_with_actions, build_action_types_menu, \
-    cleanup_scene_folder, has_content_in_scene_folder, build_action_suit_menu
+from yrx_project.client.scene.docs_process_adapter import build_action_types_menu, \
+    cleanup_scene_folder, has_content_in_scene_folder, build_action_suit_menu, ActionRunner
 from yrx_project.utils.file import get_file_name_without_extension, get_file_detail, FileDetail, open_file_or_folder, \
     get_file_name_with_extension, copy_file
 from yrx_project.utils.iter_util import find_repeat_items
@@ -89,8 +89,9 @@ class Worker(BaseWorker):
             "df_actions": df_actions,  # 动作流
             """
 
-            df_docs = self.get_param("df_docs")
-            df_actions = self.get_param("df_actions")
+            # df_docs = self.get_param("df_docs")
+            # df_actions = self.get_param("df_actions")
+            action_runner: ActionRunner = self.get_param("action_runner")
 
             def callback(ctx: ActionContext):
                 file_name = "--"
@@ -98,11 +99,9 @@ class Worker(BaseWorker):
                     file_name = get_file_name_without_extension(ctx.file_path)
                 self.refresh_signal.emit(f"文档处理中...阶段: {ctx.command_container.step_and_name} 进度：{ctx.done_task_num}/{ctx.total_task_num}; 文件: {file_name}: 操作: {ctx.command.action_name}")
                 self.custom_update_progress_signal.emit(ctx.done_task_num / ctx.total_task_num)
-            run_with_actions(
-                input_paths=df_docs["__文档路径"].to_list(),
-                df_actions=df_actions,
-                after_each_action_func=callback,
-            )
+
+            action_runner.after_each_action_func = callback
+            action_runner.run_actions()
 
             # 设置执行信息
             duration = round((time.time() - start_run_time), 2)
@@ -185,35 +184,36 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
                 release_info_button：点击弹窗版本更新信息
                 reset_button：重置所有
             第一步：docs
+                step1_help_info_button
                 add_docs_button：添加word文档
                 docs_table
-                    文档名称 | 页数 | 操作按钮 | __文档路径
+                    文档名称 | 文件大小 | 修改时间 | 操作按钮 | __文档路径
             第二步：定义动作流
-                add_actions_combo：添加的操作类型：定位、选择、修改、合并
-                add_actions_button：设置匹配条件
+                step2_help_info_button
+                action_tools_button：动作流导入导出
+                add_action_button：设置匹配条件
                 actions_table：动作流表格
-                    顺序 ｜ 类型 ｜ 动作 ｜ 动作内容 | 操作按钮
+                    类型 ｜ 动作 ｜ 动作内容 | 操作按钮 | __动作id
             第三步：执行
-                run_help_info_button：设置执行和下载帮助信息
+                step3_help_info_button
                 run_button：执行按钮
+                run_log_button：执行按钮
                 result_detail_text：执行详情
-                     🚫执行耗时：--毫秒；共匹配：--行（--%）
-                result_tree：结果文件的树状结构
+                     🚫执行耗时：--毫秒
                 run_progress_bar：进度条
                 download_result_button: 下载结果按钮
-                result_preview_grid_layout：结果文件的预览
-                    test1_preview_img QLabel 测试缩略图
-                    test2_preview_img QLabel 测试缩略图
-                    test3_preview_img QLabel 测试缩略图
-                    test4_preview_img QLabel 测试缩略图
-                result_preview_col_name_text
-                preview_col_num_add_button
-                preview_col_num_sub_button
+                result_tree：结果文件的树状结构
+            第四步（可选）：调试：单步执行
+                step4_help_info_button
+                debug_button
+                debug_next_button
+                actions_with_log_table
+
         """
 
     help_info_text = """<html>
     <head>
-        <title>Excel表格匹配示例</title>
+        <title>多文档操作场景</title>
         <style>
             table, th, td {
                 border: 1px solid black;
@@ -243,34 +243,38 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         <h2>多文档操作场景</h2>
         </hr>
         <p>此场景可以用来操作多个word文档，定义执行操作流，例如：</p>
-        <h4>上传：通过拖拽或点击上传文档后得到列表</h4>
+        <h4>第一步：上传：通过拖拽或点击上传文档后得到列表</h4>
         <div class="table-container">
             <div class="table-wrapper1">
                 <table>
                     <tr>
                         <th>文档名称</th>
-                        <th>页数</th>
+                        <th>文件大小</th>
+                        <th>修改时间</th>
                         <th>操作按钮</th>
                     </tr>
                     <tr>
                         <td>第1篇文档</td>
-                        <td>2页</td>
+                        <td>12.4kb</td>
+                        <td>2025-01-01 11:11:11</td>
                         <td>|删除|</td>
                     </tr>
                     <tr>
                         <td>第2篇文档</td>
-                        <td>3页</td>
+                        <td>12.4kb</td>
+                        <td>2025-01-01 11:11:11</td>
                         <td>|删除|</td>
                     </tr>
                     <tr>
-                        <td>第3篇文档</td>
-                        <td>2页</td>
+                       <td>第3篇文档</td>
+                        <td>12.4kb</td>
+                        <td>2025-01-01 11:11:11</td>
                         <td>|删除|</td>
                     </tr>
                 </table>
             </div>
             <div class="table-wrapper1">
-            <h4>定义：动作流</h4>
+            <h4>第二步：定义：动作流</h4>
                 <table>
                     <tr>
                         <th>顺序</th>
@@ -284,37 +288,48 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
                         <td>定位</td>
                         <td>搜索</td>
                         <td>=</td>
-                        <td>|向上|向下|删除|</td>
+                        <td>|⬆︎|⬇︎|❌|</td>
                     </tr>
                     <tr>
                         <td>2</td>
                         <td>定位</td>
                         <td>向左移动</td>
                         <td> 1 </td>
-                        <td>|向上|向下|删除|</td>
+                        <td>|⬆︎|⬇︎|❌|</td>
                     </tr>
                     <tr>
                         <td>3</td>
                         <td>选择</td>
                         <td>选择当前单元格</td>
                         <td> --- </td>
-                        <td>|向上|向下|删除|</td>
+                        <td>|⬆︎|⬇︎|❌|</td>
                     </tr>
                     <tr>
                         <td>4</td>
                         <td>修改</td>
                         <td>文字替换</td>
                         <td> abc </td>
-                        <td>|向上|向下|删除|</td>
+                        <td>|⬆︎|⬇︎|❌|</td>
                     </tr>
                     <tr>
                         <td>5</td>
                         <td>总体</td>
                         <td>合并成一个文档</td>
                         <td> -- </td>
-                        <td>|向上|向下|删除|</td>
+                        <td>|⬆︎|⬇︎|❌|</td>
                     </tr>
                 </table>
+                <h4>第三步：执行</h4>
+                <p>左下角展示执行后后的文件树：会按照文件夹进行组织，如</p>
+                <p>1-batch：存放批量操作的内容，系统会自动合并所有批量操作（目前是除了混合文档之外的操作），批量操作结束后会保存文件</p>
+                <p>2-mixing：存放混合文档后的结果，目前仅支持文档合并</p>
+                <p>*前面的数字表示执行的顺序</p>
+                <p>假设动作流设置如下</p>
+                <p>1. 搜索并选中</p>
+                <p>2. 修改字体</p>
+                <p>3. 修改字号</p>
+                <p>4. 合并所有文档</p>
+                <p>那么最终会将第1-3步的结果文件生成到1-batch文件夹中，第4步的结果放到2-mixing中</p>
             </div>
         </div>
         <h4>结果：</h4>
@@ -322,31 +337,53 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     </html>"""
     release_info_text = """
     v1.0.6: 实现基础版本的文档聚合
-    - 上传多个文档
-    - 实现
-        - 定位：搜索、移动
-        - 选择：选择当前单元格内容
-        - 修改：替换
-        - 聚合：合并
-    - 下载结果
+    - 实现多文档操作场景
+        - 上传多个文档
+        - 定义操作流
+        - 批量执行
+        - 单步调试等
     """
 
     # 第一步：上传文件的帮助信息
     step1_help_info_text = """
+    第一步：上传文件
     1. 可点击按钮或拖拽文档到表格中：目前只支持docx格式
-    2. 可点击预览查看上传的文档 TODO
+    2. 上传后展示文件名、大小、修改时间等
     """
     # 第二步：添加动作流的帮助信息
     step2_help_info_text = """
-    1. 点击添加，会显示添加的动作类型，目前支持：定位、选择、修改、聚合
+    第二步：添加工作流
+    1. 点击添加，会显示添加的动作类型，目前支持：定位光标、光标位置插入、选择内容、修改选中内容、混合文档，五类操作
     2. 指定动作类型后，在动作中选择一个对应的动作
     3. 输入动作内容
     4. 操作按钮中可以：向上移动、向下移动、删除
+    5. 工具按钮可以
+        - 复制当前动作流到剪贴板，下次可以将这个内容导入
+        - 导入剪贴板中的内容：如果剪贴板中存在合法的曾经导出的内容，可以再进行导入
+        - 加载内置的预设动作流，目前系统预设了一套动作流，可以加载，后续有需要可以继续内置到系统中
     """
     # 第三步：执行与下载的帮助信息
     step3_help_info_text = """
-    1. 第二步输入的动作内容可能存在问题，执行后，会进行提示
-    2. 预览的结果可能存在格式的问题，仅作示意，以下载的内容为准 TODO
+    第三步：批量执行
+    1. 点击执行后，按照指定的动作流进行执行
+    2. 执行过程中或完成后，可以随时点击log按钮进行日志查看
+    3. 进度条会按照大的阶段显示进度
+        1-batch下的所有进度
+    4. 结果文件树中
+        可以右键点击某个文件：打开或者下载
+        可以就见点击某个文件夹进行打开
+    5. 可以下载完整的结果
+    """
+    step4_help_info_text = """
+    第四步（可选）：调试
+    1. 点击调试按钮后，会进行提示，确认后进入调试模式（会同步打开word，单步进行执行）
+    2. 默认以文件树的第一个文件进行调试
+        如果需要指定文件，右键按钮指定需要调试的文件
+    3. 调试开始后，需要点击下一步才会执行
+    4. 每次执行会在下方的表格展示当前执行的步骤
+        执行完成的，绿色背景
+        执行有警告的，黄色背景
+        执行失败的，红色背景
     """
 
     def __init__(self):
@@ -365,8 +402,9 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
 
         # 布局修改
         ## 1. 上下布局可移动
-        # self.line_splitter = LineSplitterWrapper(self.line_test)  # todo 目前line不在布局中，无法测试
-
+        # self.line_splitter = LineSplitterWrapper(self.main_line)  # todo 目前line不在布局中，无法测试
+        # 在代码中设置 Splitter 样式
+        self.splitter_design = LineSplitterWrapper(self.splitter)
         # 1. 批量上传文档
         # 1.1 按钮
         self.add_docs_button.clicked.connect(self.add_docs)
@@ -393,7 +431,7 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # self.odd_cols_index, self.even_cols_index, self.overall_cols_index = None, None, None  # 用来标记颜色
         # self.match_for_main_col = None  # 主表匹配列的映射
         self.run_button.clicked.connect(self.run)
-        self.run_progress_bar.setValue(0)
+        self.run_progress_bar.setValue(0)  # 初始化进度条
         self.tree_file_wrapper = TreeFileWrapper(
             self.result_tree, SCENE_TEMP_PATH,
             on_double_click=lambda f: open_file_or_folder(f),
@@ -413,6 +451,12 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # # self.preview_result_button.clicked.connect(self.preview_result)
         self.download_result_button.clicked.connect(self.download_result)
         # self.view_result_button.clicked.connect(self.view_result)
+
+        # 第四步骤：调试
+        self.debug_file_paths = []  # 用于debug的输入路径
+        self.debug_button.clicked.connect(self.debug_run)
+
+        self.actions_with_log_table_wrapper = TableWidgetWrapper(self.actions_with_log_table, disable_edit=True).set_col_width(1, 320).set_col_width(3, 140)
 
     def right_click_menu_save_file(self, path):
         save_to = self.download_file_modal(get_file_name_with_extension(path))
@@ -558,10 +602,14 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
             if ok_or_not:
                 cleanup_scene_folder()
 
+        action_runner = ActionRunner(
+            input_paths=df_docs["__文档路径"].to_list(),
+            df_actions=df_actions,
+        )
+
         params = {
             "stage": "run",  # run
-            "df_docs": df_docs,  # 文档的路径
-            "df_actions": df_actions,  # 动作流
+            "action_runner": action_runner,
             # "result_table_wrapper": self.result_table_wrapper,  # 结果表的wrapper
         }
 
@@ -671,3 +719,42 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
 
     def custom_update_progress(self, value, *args, **kwargs):
         self.run_progress_bar.setValue(int(value * 100))  # 0-100的整数
+
+    def debug_run(self):
+        # 0. 至少上传了一个文件
+        df_docs = self.docs_tables_wrapper.get_data_as_df()
+        if len(df_docs) == 0:
+            return self.modal(level="warn", msg="请先上传文档")
+        df_actions = self.actions_table_wrapper.get_data_as_df()
+        if len(df_actions) == 0:
+            return self.modal(level="warn", msg="请先添加动作流")
+        paths = df_docs["__文档路径"].to_list()
+        base_names = [get_file_name_without_extension(i) for i in paths]
+
+        # 1. 弹窗确认是否开始调试，以及列出所有文件让用户选择一个文件开始调试，默认第一个
+        selected_index, yes_or_no = self.list_modal(list_items=base_names, cur_index=0, msg="指定输入文件开始调试")
+        if yes_or_no:
+            self.debug_file_paths = base_names[selected_index]
+        if len(self.debug_file_paths) == 0:
+            return self.modal(level="warn", msg="没有输入文档，无法调试")
+
+        # 2. 开始调试
+        # 设置调试步骤（下一步的按钮需要）
+        # 将第一步写到table中，增加一个行👉icon
+        # 初始化执行环境：打开word
+        self.debug_step = 0
+        action = df_actions.iloc[0,:]
+        values = [
+            action["类型"], action["动作"], action["动作内容"]
+        ]
+        self.actions_with_log_table_wrapper.add_rich_widget_row([
+            {"type": "readonly_text", "value": str(i)} for i in values
+        ])
+        self.actions_with_log_table_wrapper.set_vertical_header(["👉"])
+        action_runner = ActionRunner(
+            input_paths=paths,
+            df_actions=df_actions,
+        )
+        action_runner.debug_actions()
+
+

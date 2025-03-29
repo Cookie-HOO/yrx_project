@@ -51,8 +51,10 @@ def drag_drop_event(event, func: typing.Callable[[typing.List[str]], typing.Any]
 
 
 class TableWidgetWrapper:
-    def __init__(self, table_widget=None, del_rows_button=False, add_rows_button=False, drag_func=None):
+    def __init__(self, table_widget=None, del_rows_button=False, add_rows_button=False, drag_func=None, disable_edit=False):
         self.table_widget = table_widget or QTableWidget()
+        if disable_edit:
+            self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
         # 隐藏指定列
         self.__hidden_column()
         # 添加按钮
@@ -323,6 +325,10 @@ class TableWidgetWrapper:
             if widget2:
                 print(f"Widget2 valid: {widget2.isWidgetType()}")
 
+
+    def set_vertical_header(self, headers):
+        assert len(headers) == self.row_length()
+        self.table_widget.setVerticalHeaderLabels(headers)
 
     def add_rich_widget_row(self, row):
         """增加复杂的组件行，支持以下类型

@@ -1,4 +1,6 @@
 import os
+from typing import List, Dict, Optional, Callable, Generator
+
 
 from yrx_project.scene.process_docs.base import ActionContext, CommandManager
 from yrx_project.scene.process_docs.action_types import action_types
@@ -29,62 +31,109 @@ class ActionParser:
 
 
 class ActionProcessor:
-    def __init__(self, config, after_each_action_func=None):
-        self.command_manager = ActionParser.parse(config)
+    def __init__(
+        self,
+        config: List[Dict],
+        after_each_action_func: Optional[Callable[[Dict], None]] = None,
+        debug_mode: bool = False
+    ):
+        self.command_manager = self._parse_config(config)
         self.command_containers = self.command_manager.command_containers
         self.context = ActionContext()
-        self.context.command_manager = self.command_manager
-
         self.after_each_action_func = after_each_action_func
+        self.debug_mode = debug_mode
+        self.execution_gen: Optional[Generator] = None
+        self.current_container_idx = 0
+        self.current_file_idx = 0
+        self.current_cmd_idx = 0
 
-    def _process_command(self):
+    @staticmethod
+    def _parse_config(config: List[Dict]):
+        """解析动作配置（示例实现需补充）"""
+        return ActionParser.parse(config)
+
+    def init_context(self, input_paths: List[str]):
+        """初始化执行上下文"""
+        self.context.init(input_paths, command_manager=self.command_manager, debug_mode=True)
+
+    def _batch_execution_generator(self) -> Generator:
+        """批处理任务执行生成器"""
         ctx = self.context
-        command_containers = self.command_containers[:]  # 复制一份，避免修改原始列表
-        while command_containers:
-            command_container = command_containers.pop(0)
-            ctx.command_container = command_container
+        containers = self.command_containers[self.current_container_idx:]
 
-            if command_container.is_batch():
-                # 1. batch 类型的任务：输入路径对齐到 自己的输出路径
-                input_paths = [str(os.path.join(command_container.output_folder, get_file_name_with_extension(i))) for i in ctx.input_paths]
-                for file_path, input_path in zip(ctx.input_paths, input_paths):
-                    if not os.path.exists(file_path):
-                        raise FileNotFoundError(f"File not found: {file_path}")
-                    copy_file(file_path, input_path)
+        for cont_idx, container in enumerate(containers, start=self.current_container_idx):
+            ctx.command_container = container
+            self.current_container_idx = cont_idx
+
+            if container.is_batch():
+                # 初始化批处理环境
+                input_paths = [
+                    os.path.join(container.output_folder, os.path.basename(p))
+                    for p in ctx.input_paths
+                ]
+                for src, dst in zip(ctx.input_paths, input_paths):
+                    if not os.path.exists(src):
+                        raise FileNotFoundError(f"Missing input: {src}")
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    copy_file(src, dst)
                 ctx.input_paths = input_paths
-                ctx.total_task_num = len(ctx.input_paths) * ctx.command_container.commands_num
 
-                # 2. 执行任务：遍历文件，每个文件都需要执行batch下的所有命令
-                for file_path in ctx.input_paths:  # 这里如何并发执行
+                # 遍历文件
+                for file_idx, file_path in enumerate(ctx.input_paths[self.current_file_idx:],
+                                                   start=self.current_file_idx):
                     ctx.file_path = file_path
                     ctx.into_file(file_path)
-                    for command in command_container.commands:
-                        ctx.command = command
-                        command.run(ctx)
+                    self.current_file_idx = file_idx
+
+                    # 遍历命令
+                    cmds = container.commands[self.current_cmd_idx:]
+                    for cmd_idx, cmd in enumerate(cmds, start=self.current_cmd_idx):
+                        ctx.command = cmd
+                        cmd.run(ctx)
                         ctx.done_task()
-                        if self.after_each_action_func is not None:
-                            self.after_each_action_func(ctx)
+                        self.current_cmd_idx = cmd_idx
+                        if self.after_each_action_func:
+                            self.after_each_action_func(ctx.get_state())
+                        yield  # 暂停点
 
-            # 混合型任务: 不会修改inputs路径的文件，命令内部完成将ctx的input_path指向新的路径
+                    self.current_cmd_idx = 0  # 重置命令索引
+                self.current_file_idx = 0  # 重置文件索引
+
             else:
-                for command in command_container.commands:
-                    ctx.total_task_num = 1
-                    ctx.file_path = None
-                    ctx.command = command
-                    command.run(ctx)
+                # 普通任务执行
+                cmds = container.commands[self.current_cmd_idx:]
+                for cmd_idx, cmd in enumerate(cmds, start=self.current_cmd_idx):
+                    ctx.command = cmd
+                    cmd.run(ctx)
                     ctx.done_task()
-                    if self.after_each_action_func is not None:
-                        self.after_each_action_func(ctx)
+                    self.current_cmd_idx = cmd_idx
+                    if self.after_each_action_func:
+                        self.after_each_action_func(ctx.get_state())
+                    yield  # 暂停点
+                self.current_cmd_idx = 0
 
-    def process(self, file_paths, **kwargs):
-        self.context.init(file_paths)
+    def process(self, input_paths: List[str]):
+        """执行入口（非调试模式直接运行）"""
+        self.init_context(input_paths)
+        if not self.debug_mode:
+            for _ in self._batch_execution_generator():
+                pass
+
+    def process_next(self) -> bool:
+        """执行下一步，返回是否完成"""
+        if not self.execution_gen:
+            self.execution_gen = self._batch_execution_generator()
         try:
-            self._process_command()
-        except Exception as e:
-            print(f"Processing error: {str(e)}")
-            raise
-        finally:
-            self.context.cleanup()
-            log = self.context.log_df
-        return
+            next(self.execution_gen)
+            return True  # 还有后续动作
+        except StopIteration:
+            self._cleanup()
+            return False  # 全部完成
 
+    def _cleanup(self):
+        """清理资源"""
+        self.context.cleanup()
+        self.execution_gen = None
+        self.current_container_idx = 0
+        self.current_file_idx = 0
+        self.current_cmd_idx = 0

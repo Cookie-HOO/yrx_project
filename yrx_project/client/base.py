@@ -5,9 +5,9 @@ import traceback
 import typing
 
 import pandas as pd
-from PyQt5.QtCore import pyqtSignal, QThread, QTimer, QTime
+from PyQt5.QtCore import pyqtSignal, QThread, QTimer, QTime, Qt
 from PyQt5.QtWidgets import QWidget, QLabel, QMainWindow, QMessageBox, QListWidget, QFileDialog, QApplication, \
-    QListView, QTextBrowser, QTableWidget, QDialog, QVBoxLayout, QTableWidgetItem
+    QListView, QTextBrowser, QTableWidget, QDialog, QVBoxLayout, QTableWidgetItem, QHBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap
 
 from yrx_project.client.const import *
@@ -191,6 +191,63 @@ class BaseWindow(QMainWindow):
     def code_modal(self, apply_func, language="python", init_code=None):
         dialog = CodeDialog(language=language, apply_func=apply_func, init_code=init_code)
         dialog.exec_()
+
+    def list_modal(self, list_items, cur_index=0, msg=None,
+                   confirm_button="确定", cancel_button="取消"):
+        """
+        弹出一个列表选择对话框
+        :param list_items: 列表项数据（字符串列表）
+        :param cur_index: 初始选中索引
+        :param msg: 顶部提示信息
+        :param confirm_button: 确认按钮文本
+        :param cancel_button: 取消按钮文本
+        :return: (selected_index, confirmed)
+        """
+        # 创建对话框
+        dialog = QDialog()
+        dialog.setWindowTitle("请选择")
+
+        # 主布局
+        layout = QVBoxLayout(dialog)
+
+        # 添加提示信息
+        if msg:
+            lbl_msg = QLabel(msg)
+            lbl_msg.setAlignment(Qt.AlignCenter)
+            layout.addWidget(lbl_msg)
+
+        # 创建列表控件
+        list_widget = QListWidget()
+        list_widget.addItems(list_items)
+
+        # 设置初始选中项（防越界处理）
+        if 0 <= cur_index < len(list_items):
+            list_widget.setCurrentRow(cur_index)
+        layout.addWidget(list_widget)
+
+        # 创建按钮布局
+        btn_layout = QHBoxLayout()
+
+        # 确认按钮
+        btn_confirm = QPushButton(confirm_button)
+        btn_confirm.clicked.connect(dialog.accept)
+        btn_layout.addWidget(btn_confirm)
+
+        # 取消按钮
+        btn_cancel = QPushButton(cancel_button)
+        btn_cancel.clicked.connect(dialog.reject)
+        btn_layout.addWidget(btn_cancel)
+
+        layout.addLayout(btn_layout)
+
+        # 处理对话框结果
+        result = dialog.exec_()
+
+        # 返回值处理
+        if result == QDialog.Accepted:
+            return list_widget.currentRow(), True
+        else:
+            return (cur_index if 0 <= cur_index < len(list_items) else -1), False
 
     # 上传
     def upload_file_modal(self, patterns=("Excel Files", "*.xlsx"), multi=False, required_base_name_list=None, copy_to: str = None) -> typing.Union[str, list, None]:

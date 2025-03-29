@@ -14,6 +14,8 @@ from yrx_project.scene.process_docs.processor import ActionProcessor
 from yrx_project.utils.iter_util import swap_items_in_origin_list
 
 
+current_suit = []
+
 # 获取指定的doc的页数
 def get_docx_pages(file_path):
     import win32com.client as win32
@@ -41,33 +43,55 @@ def get_docx_pages_with_multiprocessing(file_paths):
     return results
 
 
-def run_with_actions(
-        input_paths,
+import os
+from typing import List, Dict, Optional, Callable
+
+class ActionRunner:
+    def __init__(
+        self,
+        input_paths: List[str],
         df_actions,
-        after_each_action_func: [[ActionContext], None] = None
-):
-    """
-    df_actions: 是一个df
-        类型：中文
-        动作：中文
-        动作内容
+        after_each_action_func: Optional[Callable[[Dict], None]] = None,
+    ):
+        self.input_paths = input_paths
+        self.df_actions = df_actions
+        self.after_each_action_func = after_each_action_func
+        self.action_objs = self._prepare_action_objs()
+        self.processor: Optional[ActionProcessor] = None
 
-    """
-    action_objs = []
-    for index, row in df_actions.iterrows():
-        action_id = row["__动作id"]
-        action_content = row["动作内容"]
+    def _prepare_action_objs(self) -> List[Dict]:
+        """将DataFrame中的动作转换为对象列表"""
+        action_objs = []
+        for _, row in self.df_actions.iterrows():
+            action_objs.append({
+                "action_id": row["__动作id"],
+                "action_content": row["动作内容"],
+            })
+        return action_objs
 
-        action_objs.append({
-            "action_id": action_id,
-            "action_content": action_content,
-            "action_params": {"content": action_content}},
+    def run_actions(self):
+        """一次性执行所有动作"""
+        ActionProcessor(
+            self.action_objs,
+            after_each_action_func=self.after_each_action_func
+        ).process(self.input_paths)
+
+    def debug_actions(self):
+        """进入调试模式，初始化单步执行环境"""
+        self.processor = ActionProcessor(
+            self.action_objs,
+            after_each_action_func=self.after_each_action_func,
+            debug_mode=True
         )
+        # 初始化上下文但不立即执行
+        self.processor.init_context(self.input_paths)
 
-    ActionProcessor(
-        action_objs,
-        after_each_action_func=after_each_action_func,
-    ).process(input_paths)
+    def next_action(self) -> bool:
+        """执行下一步动作，返回是否还有后续动作"""
+        if not self.processor:
+            raise RuntimeError("Debug mode not initialized. Call debug_actions() first.")
+        return self.processor.process_next()
+
 
 
 def build_action_types_menu(table_wrapper: TableWidgetWrapper):
@@ -96,6 +120,8 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
     2. 所有的func 都是 lambda: 1
     3. 遍历df的过程中，遇到 action_type_id 相同，但是 group_id不同，那么插入一个 {"type": "menu_spliter"},
     """
+    action_suit_table = ActionSuitTableTrans(table_wrapper)
+
     # 获取 DataFrame
     df = action_types.action_types_df
 
@@ -137,18 +163,20 @@ def build_action_types_menu(table_wrapper: TableWidgetWrapper):
                         }, {
                             "type": "button_group",
                             "values": [
-                                # {
-                                #     "value": "向下",
-                                #     "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
-                                #         row_index, row_index+1),
-                                # },
-                                # {
-                                #     "value": "向上",
-                                #     "onclick": lambda row_index, col_index, row: table_wrapper.swap_rows(
-                                #         row_index, row_index-1),
-                                # },
                                 {
-                                    "value": "删除",
+                                    "value": "⬆",
+                                    "onclick": lambda row_index, col_index, row: action_suit_table.apply_suit(
+                                        swap_items_in_origin_list(row_index, row_index-1, action_suit_table.trans2action_suit())
+                                    ),
+                                },
+                                {
+                                    "value": "⬇︎",
+                                    "onclick": lambda row_index, col_index, row: action_suit_table.apply_suit(
+                                        swap_items_in_origin_list(row_index, row_index-1, action_suit_table.trans2action_suit())
+                                    ),
+                                },
+                                {
+                                    "value": "❌",
                                     "onclick": lambda row_index, col_index, row_: table_wrapper.delete_row(
                                         row_index),
                                 },

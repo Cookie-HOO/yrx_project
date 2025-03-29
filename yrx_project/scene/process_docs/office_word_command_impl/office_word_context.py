@@ -91,13 +91,13 @@ class OfficeWordContext:
             }
         }
 
-    def init(self):
+    def init(self, debug_mode):
         import pythoncom
         import win32com.client as win32
         pythoncom.CoInitialize()
 
         word = win32.gencache.EnsureDispatch('Word.Application')
-        word.Visible = True
+        word.Visible = debug_mode
         self.word = word
 
     def cleanup(self):
