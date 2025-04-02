@@ -52,10 +52,13 @@ class ActionContext:
         self.lock_log = Lock()
 
     def get_show_msg(self):
-        return (f"当前阶段: {self.command_container.step}/{len(self.command_manager.command_containers)} "
-                f"阶段进度: {self.done_file_num/self.total_task_num*100}%; "
-                f"当前文件: {self.done_file_num}/{len(self.input_paths) * 100}%; "
-                f"动作: {self.command.action_name}; 文件: {self.file_name_without_extension}")
+        msg_list = [
+            f"当前阶段: {self.command_container.step}/{len(self.command_manager.command_containers)}",
+            f"阶段进度: {self.done_task_num / self.total_task_num * 100}%",
+            # f"文件进度: {self.done_file_num}/{len(self.input_paths)}%",
+            # f"当前动作: {self.command.action_name}; 当前文件: {self.file_name_without_extension}"
+        ]
+        return "; ".join(msg_list)
 
     def get_log_df(self):
         try:

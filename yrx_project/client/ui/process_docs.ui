@@ -86,7 +86,7 @@
       <item>
        <widget class="QPushButton" name="reset_button">
         <property name="text">
-         <string>重置所有</string>
+         <string>重置输入输出</string>
         </property>
        </widget>
       </item>

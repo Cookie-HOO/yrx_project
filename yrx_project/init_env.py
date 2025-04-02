@@ -5,8 +5,6 @@ def init_env(env):
     import os
     os.environ["env"] = env
 
-    import openpyxl  # 显式引入，pandas读取excel需要
-
     # 初始化路径
     from yrx_project.const import TEMP_PATH
     if not os.path.exists(TEMP_PATH):

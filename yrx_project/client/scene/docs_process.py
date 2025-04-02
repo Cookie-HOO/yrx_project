@@ -24,11 +24,7 @@ from yrx_project.utils.time_obj import TimeObj
 
 class Worker(BaseWorker):
     custom_after_upload_signal = pyqtSignal(dict)  # 自定义信号
-    # custom_after_add_condition_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_run_signal = pyqtSignal(dict)  # 自定义信号
-    # custom_view_result_signal = pyqtSignal(dict)  # 自定义信号
-    # custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
-    # custom_preview_df_signal = pyqtSignal(dict)  # 自定义信号
 
     def my_run(self):
         stage = self.get_param("stage")  # self.equal_buffer_value.value()
@@ -61,19 +57,6 @@ class Worker(BaseWorker):
                 # "pages": pages,
                 "file_details": file_details,
                 "status_msg": status_msg,
-            })
-        elif stage == "preview_df":
-            self.refresh_signal.emit(
-                f"预览表格中..."
-            )
-            start_preview_df_time = time.time()
-
-            df_config = self.get_param("df_config")
-            dfs = read_excel_file_with_multiprocessing([df_config])
-            status_msg = f"✅预览结果成功，共耗时：{round(time.time() - start_preview_df_time, 2)}s："
-            self.custom_preview_df_signal.emit({
-                "df": dfs[0],
-                "status_msg": status_msg
             })
 
         elif stage == "run":  # 任务处在执行的阶段
@@ -132,39 +115,6 @@ class Worker(BaseWorker):
                 "status_msg": status_msg,
             })
 
-        elif stage == "download":
-            self.refresh_signal.emit(
-                f"合成Excel文件并下载..."
-            )
-            include_detail_checkbox = self.get_param("include_detail_checkbox")
-            overall_match_info = self.get_param("overall_match_info")
-            detail_match_info = self.get_param("detail_match_info")
-            result_table_wrapper = self.get_param("result_table_wrapper")
-            even_cols_index = self.get_param("even_cols_index")
-            odd_cols_index = self.get_param("odd_cols_index")
-            overall_cols_index = self.get_param("overall_cols_index")
-            file_path = self.get_param("file_path")
-
-            start_download = time.time()
-            start_time = time.time()
-            exclude_cols = []
-            if not include_detail_checkbox.isChecked():  # 如果不需要详细信息，那么删除额外信息
-                exclude_cols = overall_match_info.get("match_extra_cols_index_list") or []
-                for i in detail_match_info.values():
-                    exclude_cols.extend(i.get("match_extra_cols"))
-            result_table_wrapper.save_with_color_v3(file_path, exclude_cols=exclude_cols, color_mapping={
-                COLOR_BLUE.name(): even_cols_index,
-                COLOR_GREEN.name(): odd_cols_index,
-                COLOR_RED.name(): overall_cols_index,
-                COLOR_YELLOW.name(): overall_match_info.get("match_for_main_col"),  # 是一个map key是主表匹配列的索引，value是行索引
-            })
-            duration = round((time.time() - start_download), 2)
-
-            self.custom_after_download_signal.emit({
-                "duration": duration,
-                "status_msg": f"✅下载成功，共耗时：{duration}秒",
-                "file_path": file_path,
-            })
 
 
 class MyDocsProcessorClient(WindowWithMainWorkerBarely):
@@ -397,13 +347,11 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         # 1. 批量上传文档
         # 1.1 按钮
         self.add_docs_button.clicked.connect(self.add_docs)
-        # self.reset_button.clicked.connect(self.reset_all)
+        self.reset_button.clicked.connect(self.reset_all)
         # 1.2 表格
         self.docs_tables_wrapper = TableWidgetWrapper(
             self.docs_table, drag_func=self.docs_drag_drop_event).set_col_width(2, 150)  # 上传docs之后展示所有table的表格
-        # self.help_tables_wrapper = TableWidgetWrapper(self.help_tables_table,
-        #                                               drag_func=self.help_drag_drop_event)  # 上传table之后展示所有table的表格
-        #
+
         # # 2. 添加动作流
         self.actions_table_wrapper = TableWidgetWrapper(self.actions_table).set_col_width(1, 320).set_col_width(3, 140)
         self.add_action_button_menu = ButtonMenuWrapper(
@@ -413,12 +361,8 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
             self, self.action_tools_button, build_action_suit_menu(self.actions_table_wrapper)
         )
 
-        # self.add_action_button.clicked.connect(self.add_action)
-        #
-        # # 3. 执行与下载
-        # self.matched_df, self.overall_match_info, self.detail_match_info = None, None, None  # 用来获取结果
-        # self.odd_cols_index, self.even_cols_index, self.overall_cols_index = None, None, None  # 用来标记颜色
-        # self.match_for_main_col = None  # 主表匹配列的映射
+        # 3. 执行与下载
+        self.run_flag = None
         self.run_button.clicked.connect(self.run)
         self.tree_file_wrapper = TreeFileWrapper(
             self.result_tree, SCENE_TEMP_PATH,
@@ -433,12 +377,7 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         )
 
 
-        # self.worker.custom_after_upload_signal.connect(self.custom_after_upload)
-        # self.result_table_wrapper = TableWidgetWrapper(self.result_table)
-        # self.result_detail_info_button.clicked.connect(self.show_result_detail_info)
-        # # self.preview_result_button.clicked.connect(self.preview_result)
         self.download_result_button.clicked.connect(self.download_result)
-        # self.view_result_button.clicked.connect(self.view_result)
 
         # 第四步骤：调试
         self.debug_current_step = None
@@ -449,13 +388,17 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         self.actions_with_log_table_wrapper = TableWidgetWrapper(self.actions_with_log_table, disable_edit=True).set_col_width(1, 320).set_col_width(3, 140)
 
     def right_click_menu_save_file(self, path):
+        # 下载目录
+        if os.path.isdir(path):
+            if self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理"):
+                self.modal(level="info", msg="✅下载成功")
+            return
+        # 下载文件
         save_to = self.download_file_modal(TimeObj().time_str + get_file_name_with_extension(path))
         if save_to:
             copy_file(path, save_to)
-            self.modal(level="info", msg="✅下载成功")
 
-    def right_click_menu_preview_file(self, path):  #  TODO
-        pass
+
 
     def register_worker(self):
         return Worker()
@@ -470,19 +413,21 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         if not file_paths:
             return
         self.add_doc(file_paths)
-    #
-    # @set_error_wrapper
-    # def reset_all(self, *args, **kwargs):
-    #     self.main_tables_wrapper.clear()
-    #     self.help_tables_wrapper.clear()
-    #     self.conditions_table_wrapper.clear()
-    #     self.result_table_wrapper.clear()
-    #     self.statusBar.showMessage("已重置，请重新上传文件")
-    #     self.detail_match_info = None
-    #     self.overall_match_info = None
-    #     self.matched_df = None
-    #     self.result_detail_text.setText("共匹配：--行（--%）")
-    #
+
+    @set_error_wrapper
+    def reset_all(self, *args, **kwargs):
+        # 清空内容
+        if self.run_flag or self.debug_current_step is not None:
+            return self.modal(level="warn", msg="运行中或调试中，无法重置")
+        if not self.modal(level="check_yes", msg="清空会清除所有的上传文件、动作流和执行结果，是否继续"):
+            return
+        self.docs_tables_wrapper.clear()
+        self.actions_table_wrapper.clear()
+        cleanup_scene_folder()
+
+        self.result_detail_text.setText("🚫执行总计耗时：--秒")
+        self.statusBar.showMessage("已重置，请重新上传文件")
+
     # 上传文件的核心函数（调用worker）
     @set_error_wrapper
     def add_doc(self, file_paths):
@@ -551,33 +496,6 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     def delete_table_row(self, row_index, table_type, *args, **kwargs):
         self.docs_tables_wrapper.delete_row(row_index)
 
-
-    # # 预览上传文件（调用worker）
-    # @set_error_wrapper
-    # def preview_table_button(self, row_index, table_type, *args, **kwargs):
-    #     # 读取文件进行上传
-    #     df_config = self.get_df_config_by_row_index(row_index, table_type)
-    #     df_config["nrows"] = 10  # 实际读取的行数
-    #     params = {
-    #         "stage": "preview_df",  # 第一阶段
-    #         "df_config": df_config,  # 上传的所有文件名
-    #     }
-    #     self.worker.add_params(params).start()
-    #     self.tip_loading.set_titles(["预览表格.", "预览表格..", "预览表格..."]).show()
-    #
-    # @set_error_wrapper
-    # def custom_preview_df(self, preview_result):
-    #     df = preview_result.get("df")
-    #     status_msg = preview_result.get("status_msg")
-    #     max_rows_to_show = 10
-    #     if len(df) >= max_rows_to_show:
-    #         extra = [f'...省略剩余行' for _ in range(df.shape[1])]
-    #         new_row = pd.Series(extra, index=df.columns)
-    #         # 截取前 max_rows_to_show 行，再拼接省略行信息
-    #         df = pd.concat([df.head(max_rows_to_show), pd.DataFrame([new_row])], ignore_index=True)
-    #     self.tip_loading.hide()
-    #     self.set_status_text(status_msg)
-    #     self.table_modal(df, size=(400, 200))
     @set_error_wrapper
     def run(self, *args, **kwargs):
         df_docs = self.docs_tables_wrapper.get_data_as_df()
@@ -588,9 +506,11 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
             return self.modal(level="warn", msg="请先添加动作流")
 
         if has_content_in_scene_folder():
-            ok_or_not = self.modal(level="check_yes", msg=f"当前操作空间有上次执行的结果，是否继续（选择是，会清空之前的执行结果）", default="yes")
-            if ok_or_not:
-                cleanup_scene_folder()
+            if not self.modal(level="check_yes", msg=f"当前操作空间有上次执行的结果，是否继续（选择是，会清空之前的执行结果）", default="yes"):
+                return
+
+        # 准备开始
+        cleanup_scene_folder()
 
         action_runner = ActionRunner(
             input_paths=df_docs["__文档路径"].to_list(),
@@ -602,7 +522,7 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
             "action_runner": action_runner,
             # "result_table_wrapper": self.result_table_wrapper,  # 结果表的wrapper
         }
-
+        self.run_flag = True
         self.worker.add_params(params).start()
         self.tip_loading.set_titles(["文档处理.", "文档处理..", "文档处理..."]).show()
 
@@ -611,19 +531,14 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
         tip = run_result.get("tip")
         status_msg = run_result.get("status_msg")
         duration = run_result.get("duration")
-        # self.detail_match_info = run_result.get("detail_match_info")
-        # self.overall_match_info = run_result.get("overall_match_info")
-        # self.matched_df = run_result.get("matched_df")
-        # self.odd_cols_index = run_result.get("odd_cols_index")
-        # self.even_cols_index = run_result.get("even_cols_index")
-        # self.overall_cols_index = run_result.get("overall_cols_index")
-        # self.match_for_main_col = run_result.get("match_for_main_col")
 
         self.result_detail_text.setText(tip)
         self.tip_loading.hide()
         self.set_status_text(status_msg)
         self.tree_file_wrapper.force_refresh()
-        return self.modal(level="info", msg=f"✅文档处理成功，共耗时：{duration}秒")
+        self.modal(level="info", msg=f"✅文档处理成功，共耗时：{duration}秒")
+        self.run_flag = False
+        return
 
     @set_error_wrapper
     def update_preview_col_num(self, step):
@@ -632,80 +547,11 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
             self.preview_col_num_text.setText(str(new_num))
 
 
-
-    # @set_error_wrapper
-    # def show_result_detail_info(self, *args, **kwargs):
-    #     if not self.detail_match_info:
-    #         return self.modal(level="warn", msg="请先执行")
-    #     msg_list = []
-    #     data = []
-    #     for k, v in self.detail_match_info.items():
-    #         duration = round(v.get("time_cost") * 1000, 2)
-    #         match_percent = len(v.get('match_index_list')) / (
-    #                     len(v.get('match_index_list')) + len(v.get('unmatch_index_list')))
-    #         unmatch_percent = len(v.get('unmatch_index_list')) / (
-    #                     len(v.get('match_index_list')) + len(v.get('unmatch_index_list')))
-    #         delete_percent = len(v.get('delete_index_list')) / (
-    #                     len(v.get('match_index_list')) + len(v.get('unmatch_index_list')))
-    #         data.append({
-    #             "表名": k,
-    #             # "耗时": f"{duration}s",
-    #             "匹配行数": f"{len(v.get('match_index_list'))}（{round(match_percent * 100, 2)}%）",
-    #             "未匹配行数": f"{len(v.get('unmatch_index_list'))}（{round(unmatch_percent * 100, 2)}%）",
-    #             "需要删除行数": f"{len(v.get('delete_index_list'))}（{round(delete_percent * 100, 2)}%）",
-    #         })
-    #     self.table_modal(pd.DataFrame(data), size=(500, 200))
-    #
-    # @set_error_wrapper
-    # def view_result(self, *args, **kwargs):
-    #     if not self.detail_match_info:
-    #         return self.modal(level="warn", msg="请先执行")
-    #
-    #     table_widget_container = TableWidgetWrapper()
-    #     params = {
-    #         "stage": "view_result",  # 阶段：预览大表格
-    #         "matched_df": self.matched_df,  # 匹配结果
-    #         "table_widget_container": table_widget_container,  # 匹配结果
-    #         "odd_cols_index": self.odd_cols_index,  # 偶数辅助表相关列的索引
-    #         "even_cols_index": self.even_cols_index,  # 奇数辅助表相关列的索引
-    #         "overall_cols_index": self.overall_cols_index,  # 综合列的索引（最后两列）
-    #         "match_for_main_col": self.match_for_main_col,  # 综合列的索引（最后两列）
-    #     }
-    #     self.worker.add_params(params).start()
-    #     self.tip_loading.set_titles(["生成预览结果.", "生成预览结果..", "生成预览结果..."]).show()
-    #
-    # @set_error_wrapper
-    # def custom_view_result(self, view_result):
-    #     table_widget_wrapper = view_result.get("table_widget_wrapper")
-    #     status_msg = view_result.get("status_msg")
-    #     self.tip_loading.hide()
-    #     self.set_status_text(status_msg)
-    #     self.table_modal(
-    #         table_widget_wrapper, size=(1200, 1000)
-    #     )
-    #
     @set_error_wrapper
     def download_result(self, *args, **kwargs):
         if self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理"):
             self.modal(level="info", msg="✅下载成功")
 
-    # @set_error_wrapper
-    # def custom_after_download(self, after_download_result):
-    #     status_msg = after_download_result.get("status_msg")
-    #     duration = after_download_result.get("duration")
-    #     file_path = after_download_result.get("file_path")
-    #     self.set_status_text(status_msg)
-    #     self.tip_loading.hide()
-    #     return self.modal(level="info", msg=f"✅下载成功，共耗时：{duration}秒", funcs=[
-    #         # QMessageBox.ActionRole | QMessageBox.AcceptRole | QMessageBox.RejectRole
-    #         # QMessageBox.DestructiveRole | QMessageBox.HelpRole | QMessageBox.YesRole | QMessageBox.NoRole
-    #         # QMessageBox.ResetRole | QMessageBox.ApplyRole
-    #
-    #         {"text": "打开所在文件夹", "func": lambda: open_file_or_folder_in_browser(os.path.dirname(file_path)),
-    #          "role": QMessageBox.ActionRole},
-    #         {"text": "打开文件", "func": lambda: open_file_or_folder_in_browser(file_path),
-    #          "role": QMessageBox.ActionRole},
-    #     ])
 
     def debug_run(self):
         # 0. 至少上传了一个文件

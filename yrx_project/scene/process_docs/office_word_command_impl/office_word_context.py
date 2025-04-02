@@ -24,8 +24,6 @@ class OfficeWordContext:
     @property
     def consts(self) -> dict:
         from win32com.client import constants
-        for i in dir(constants):
-            print(i)
         return {
             "SYMBOL_MAP": {
                 "分页符": constants.wdPageBreak,
@@ -75,7 +73,7 @@ class OfficeWordContext:
             ],
             "SELECTION_TYPE": {
                 # 光标状态
-                "cursor": constants.wdSelectionNormal,
+                "cursor": constants.wdSelectionIP,
                 # 普通选择, 选中了一列, 选中了一行或多行, 选中了一块区域
                 "text": [constants.wdSelectionNormal, constants.wdSelectionColumn, constants.wdSelectionRow, constants.wdSelectionBlock,],
                 # 选中了内置对象：图片等, 选中了独立的形状

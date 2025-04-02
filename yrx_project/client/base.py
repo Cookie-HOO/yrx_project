@@ -150,7 +150,7 @@ class BaseWindow(QMainWindow):
                 self.done = True
             QMessageBox.critical(self, title, msg)
         elif level == "check_yes":  # 只要yes（点击No或者关闭，reply都是一个值）
-            default_yes_or_false = kwargs.get("default")
+            default_yes_or_false = kwargs.get("default") or "yes"
             default = QMessageBox.No
             if default_yes_or_false.lower() == "yes":
                 default = QMessageBox.Yes

@@ -29,8 +29,7 @@ class TreeFileWrapper:
                 [] 表示默认全部打开
                 或者 list 的 path，表示打开的文件夹
         """
-        if not os.path.exists(root_path):
-            return
+
         self.tree_widget = tree_widget
         self.root_path = os.path.normpath(root_path)  # 标准化路径
         self.on_click = on_click
@@ -39,6 +38,8 @@ class TreeFileWrapper:
         self.open_on_default = open_on_default
 
         self.file_model = QFileSystemModel()
+        if not os.path.exists(root_path):
+            return
         self._build_tree()
         self._connect_signals()
 
@@ -170,3 +171,14 @@ class TreeFileWrapper:
         # 更新树形视图
         root_index = self.file_model.index(current_root_path)
         self.tree_widget.setRootIndex(root_index)
+
+        # 初始化的信息
+        self._build_tree()
+        self._connect_signals()
+
+        # 启用右键菜单
+        if self.right_click_menu:
+            self._enable_right_click_menu()
+
+        # 设置默认展开状态
+        self.file_model.directoryLoaded.connect(self._set_default_expansion)

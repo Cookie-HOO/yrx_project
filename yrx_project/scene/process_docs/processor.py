@@ -96,7 +96,7 @@ class ActionProcessor:
                         self.current_cmd_idx = cmd_idx
                         if self.after_each_action_func:
                             self.after_each_action_func(ctx)
-
+                    ctx.quit_file()
                     self.current_cmd_idx = 0  # 重置命令索引
                 self.current_file_idx = 0  # 重置文件索引
 

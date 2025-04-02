@@ -225,7 +225,11 @@ class SelectUntilCommand(Command):
 
 class DeleteCommand(Command):
     def office_word_run(self, context: ActionContext):
-        pass
+        # 确保当前有选中内容或光标处于有效状态
+        if context.selection.Type == context.consts["SELECTION_TYPE"]["cursor"]:
+            return False, "当前没有选中内容，无法删除"
+        context.selection.Delete()
+        return True, None
 
 
 class ReplaceTextCommand(Command):
@@ -361,7 +365,7 @@ class MergeDocumentsCommand(Command):
                 doc.Close(SaveChanges=False)
 
                 # 插入换行符分隔不同文件内容
-                range_obj.InsertAfter("\n")  # 插入换行符或其他分隔符
+                # range_obj.InsertAfter("\n")  # 插入换行符或其他分隔符
                 range_obj.Collapse(Direction=0)  # 移动光标到当前范围的末尾
 
                 # 粘贴内容到指定范围

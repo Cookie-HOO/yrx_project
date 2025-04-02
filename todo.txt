@@ -1,3 +1,5 @@
+==========================================
+======= 测试 =======
 - 拆分工具函数
 - DONE：线程改进程，看速度
 - DONE: 平均 加个小数点 580/580	100.0%	COST: 41min:52s	AVG: 4s/个
@@ -14,6 +16,9 @@
         亚马逊的版本没有a
 
 
+==========================================
+==========================================
+======= 表匹配场景 =======
 标题慢
 自定义忽略规则
 增加demo按钮
@@ -39,17 +44,18 @@ DONE：无的emoji
 DONE：三个步骤的帮助
 DONE：前端文案的优化
 DONE：匹配行数 1.0 -> 1
-
-下拉多选的颜色：不做任何操作加个背景色（多选）
-
 DONE: 辅助表可以支持多个
 DONE: nan值去掉
 DONE 调试多选的下拉
 DONE table添加rich cell的类型支持checkbox，（匹配忽略符号）
+
+下拉多选的颜色：不做任何操作加个背景色（多选）
 多选下拉还可以调整顺序的，或者换一个样式，比如点击后出一个穿梭框
     最好的方案还是点击后，文字可以改变成序号，而不是目前的对勾
 
-合并单元格场景
+==========================================
+==========================================
+======= 合并单元格场景 =======
 上方按钮
     筛选、排序、分组
 ...按钮
@@ -67,10 +73,6 @@ DONE table添加rich cell的类型支持checkbox，（匹配忽略符号）
     向右添加固定值
     向右添加正则处理结果
     向右添加python代码
-
-
-
-
 
 1. 指定列去重（指定的列都是有合并单元格的情况）
     上面按钮，需要先选择某些列，点击去重后弹窗确认，结果去掉了几行显示在状态栏
@@ -104,418 +106,60 @@ DONE table添加rich cell的类型支持checkbox，（匹配忽略符号）
     筛选：点击后，每列都出现一个向下的三角在列名的右边（参考excel）
 状态栏的按钮
     撤销：状态栏中会显示上一步操作，后面跟着一个按钮撤销
-
-
 多次上传，第二次失效
 
 
+==========================================
+==========================================
+======= 文档批处理场景 =======
+已完成
+    DONE 5. 目录树的文件夹名字有问题
+    DONE 3. 执行时，清理temp路径
+    DONE 8. 进度条和执行时的提示
+    DONE 6. 右键文件进行保存
+    DONE 7. 点击下载全部
+    GIVEUP 9. 缩略图
+    GIVEUP    第一步增加预览按钮
+    DONE 完成相关的功能函数
+    DONE ✨✨✨保存好的实现路径
+    DONE 给表格加一个数字spin的代理，默认有，可以关
+    DONE 将action_config(action_id, 和params) 抽象一下，content替换params
+    DONE 17. ✨✨颜色可以尝试使用color picker
+    DONE ✨✨给action_config增加一个转rich_row的函数，可以快速添加到table中
+    DONE    ✨GIVEUP 11. 操作的上下移动：修改action_configs，然后全部重绘制
+    DONE✨✨工具箱按钮，按钮样式同步修改
+        加载内置的结构（当前的按钮）
+        复制当前结构
+        加载复制的结构，如果有内容，进行提示（无法找回当前的内容）
+        ---
+        查看当前逻辑计划执行图（待商榷）🛠️
+    DONE✨✨action_types生成menu时增加tip
+    DONE✨第一步/第二步 和 第三步 中间的分割线可以控制上下两部分的宽度
+    DONE 增加调试和日志功能
+        ✨需要有个地方看执行日志，文件的日志和操作的日志
+            和结果树状组件水平并列
+        ✨执行和调试是两个tab
+        测试按钮，点击后是一个弹窗，可以选择输入的文档进行测试，生成的结果在0-test目录下
+            打开word，多一个按钮：「执行下一步」：action_name：action_content
+            table中最左侧显示一个标记，已经执行完的，和将要执行的
+    DONE 2. 修改选中内容中，增加一个删除
+    DONE1. 进度条是大的阶段的进度，不是所有的进度
+    DONE    共x个阶段，当前阶段进度
+    DONE 1. 重置按钮
+    DONE ✨✨右键文件夹的保存，目前有问题
 
+待商榷
+    --4. 关闭程序后，清理temp路径（待商榷）
+    10. ✨执行逻辑流程图（待商榷）
+    ✨增加光标状态的提示，是否是选择状态（待商榷）
+    ✨✨action操作，支持spliter，具体执行时没有任何作用，但是有颜色作为分割（待商榷）
 
-代码执行
-    如果报错不能关
-    添加 检查代码按钮
-    添加 测试按钮（测试前三条）
-    添加 对当前操作列的下拉
-
-多表格处理
-    第一步：
-        增加预览按钮
-        DONE 页数问题？去掉？
-    第二步：
-        DONE select类型，多加几个动作：选择当前行，向下选择直到
-        DONE update类型，增加：修改字体，修改颜色
-        循环和条件逻辑的考虑
-            只有出现搜索才可能有循环
-            或者主动的循环（有点复杂）变成一个动作类型，还是单独一个步骤，配置逻辑
-        DONE 选择动作后，修改动作内容的值（可能变成下拉）
-        DONE 添加动作改成点击+之后出现下拉
-        操作按钮增加向上向下移动
-    第三步
-        DONE 完成文件树
-        完成缩略图
-            向下可滚动
-            可以调整一行显示几个
-            点击可放大
-    执行逻辑
-        DONE 需要把map reduce的逻辑分开，第一大步、第二大步
-        DONE 提示中，展示执行逻辑
-        查看执行逻辑图按钮完成执行逻辑
-        将中间结果放到临时存储路径中，下一次执行，或重置所有时，删除
-        DONE doc processor的const.py中那个常量改成一个类，提供一个方法
-
-
-
-
-DONE 5. 目录树的文件夹名字有问题
-DONE 3. 执行时，清理temp路径
-DONE 8. 进度条和执行时的提示
-DONE 6. 右键文件进行保存
-DONE 7. 点击下载全部
-GIVEUP 9. 缩略图
-GIVEUP    第一步增加预览按钮
-DONE 完成相关的功能函数
-DONE ✨✨✨保存好的实现路径
-DONE 给表格加一个数字spin的代理，默认有，可以关
-DONE 将action_config(action_id, 和params) 抽象一下，content替换params
-DONE 17. ✨✨颜色可以尝试使用color picker
-DONE ✨✨给action_config增加一个转rich_row的函数，可以快速添加到table中
-DONE    ✨GIVEUP 11. 操作的上下移动：修改action_configs，然后全部重绘制
-DONE✨✨工具箱按钮，按钮样式同步修改
-    加载内置的结构（当前的按钮）
-    复制当前结构
-    加载复制的结构，如果有内容，进行提示（无法找回当前的内容）
-    ---
-    查看当前逻辑计划执行图（待商榷）🛠️
-DONE✨✨action_types生成menu时增加tip
-DONE✨第一步/第二步 和 第三步 中间的分割线可以控制上下两部分的宽度
-DONE 增加调试和日志功能
-    ✨需要有个地方看执行日志，文件的日志和操作的日志
-        和结果树状组件水平并列
-    ✨执行和调试是两个tab
-    （待商榷）测试按钮，点击后是一个弹窗，可以选择输入的文档进行测试，生成的结果在0-test目录下
-        打开word，多一个按钮：「执行下一步」：action_name：action_content
-        table中最左侧显示一个标记，已经执行完的，和将要执行的
-
-
-
---4. 关闭程序后，清理temp路径（待商榷）
-10. ✨执行逻辑流程图（待商榷）
-✨增加光标状态的提示，是否是选择状态（待商榷）
-✨✨action操作，支持spliter，具体执行时没有任何作用，但是有颜色作为分割（待商榷）
-
-
-DONE 2. 修改选中内容中，增加一个删除
-DONE1. 进度条是大的阶段的进度，不是所有的进度
-DONE    共x个阶段，当前阶段进度
-
-1. 重置按钮
-引入调试模式后，对于下载的修改
-    1. 右键文件夹的保存，目前有问题
-    2. 将测试生成的文件放到0-test目录下
-        需要每个container 动态接受自己的parent是什么，test的时候，需要将container的parent设置为0-test
-13. ✨✨循环和条件的补充
-    当搜索后选择所有搜索结果时、
-    循环的时候，所有需要循环的用一个别的背景色标识
-测试相关的功能函数
-
-
-
-
-
-## command实现提示：
-
-根据action_types中定义的任务和命令类的关系，实现对应命令类
-说明：每一项的倒数第二个是命令类，倒数第一个是命令类的基本参数。
-
-所有需要实现的command如下，共13个
-SearchTextCommand
-MoveCursorCommand
-MoveCursorUntilSpecialCommand
-InsertSpecialCommand
-InsertTextCommand
-SelectCurrentScopeCommand
-SelectUntilCommand
-ReplaceTextCommand
-UpdateFontCommand
-AdjustFontSizeCommand
-UpdateFontColorCommand
-UpdateParagraphCommand
-MergeDocumentsCommand
-
-action_types.load_from_config({
-    "locate": {
-        "search": [
-            ["search_first_and_select", "搜索：[输入] 关键词并选中第一个匹配项", EDITABLE_TEXT, "输入搜索内容", "", SearchTextCommand, None],
-            ["search_first_and_move_left", "搜索：[输入] 关键词并移动光标到左侧", EDITABLE_TEXT, "输入搜索内容", "", SearchTextCommand, {"pointer_after_search": "left"}],
-            ["search_first_and_move_right", "搜索：[输入] 关键词并移动光标到右侧", EDITABLE_TEXT, "输入搜索内容", "", SearchTextCommand, {"pointer_after_search": "right"}],
-        ],
-        "move": [
-            ["move_up_lines", "移动：[输入] 上移行数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "up", "unit": "行"}],
-            ["move_down_lines", "移动：[输入] 下移行数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "down", "unit": "行"}],
-            ["move_left_chars", "移动：[输入] 左移字符数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "left", "unit": "字符"}],
-            ["move_right_chars", "移动：[输入] 右移字符数", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "right", "unit": "字符"}],
-        ],
-        "move_until": [
-            ["move_prev_to_landmark_only_text", "移动：向前跳至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": True}],
-            ["move_next_to_landmark_only_text", "移动：向后跳至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right", "ignore_blank": True}],
-            ["move_prev_to_landmark", "移动：向前跳至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": False}],
-            ["move_next_to_landmark", "移动：向后跳至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right", "ignore_blank": False}],
-        ]
-    },
-    "insert": {
-        "default": [
-            ["insert_special_symbol", "插入：[选择] 特殊符号类型", DROPDOWN, "请选择符号类型", ["分页符", "换行符", "分节符", "制表符"], InsertSpecialCommand, None],
-            ["insert_custom_text", "插入：[输入] 自定义文本内容", EDITABLE_TEXT, "直接输入要插入的文字（支持多行）", "", InsertTextCommand, None],
-        ],
-    },
-    "select": {
-        "current": [
-            ["select_current_scope", "选择当前范围：[选择] 范围类型", DROPDOWN, "请选择范围类型", ["行", "段落", "表格单元格", "页面", "整个文档"], SelectCurrentScopeCommand, None],
-        ],
-        "move_until_and_select": [
-            ["select_prev_to_landmark_only_text", "选择：向前至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": True, "select": True}],
-            ["select_next_to_landmark_only_text", "选择：向后至 [选择] 标识（忽略开头结尾的空白）", DROPDOWN, "请选择标识类型，所有内容只考虑文字，忽略空白和空行", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right","ignore_blank": True, "select": True}],
-            ["select_prev_to_landmark", "选择：向前至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行开头", "上一段开头", "上一段结尾", "当前单元格开头", "当前页面开头", "当前文档开头"], MoveCursorUntilSpecialCommand, {"direction": "left", "ignore_blank": False, "select": True}],
-            ["select_next_to_landmark", "选择：向后至 [选择] 标识", DROPDOWN, "请选择标识类型", ["当前行结尾", "下一段开头", "下一段结尾", "当前单元格结尾", "当前页面结尾", "当前文档结尾"], MoveCursorUntilSpecialCommand, {"direction": "right","ignore_blank": False, "select": True}],
-        ],
-        "move_and_select": [
-            ["select_up_lines", "选择：[输入] 向上选择的行数（算当前行）", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand,{"direction": "up", "unit": "line", "select": True}],
-            ["select_down_lines", "选择：[输入] 向下选择的行数（算当前行）", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "down", "unit": "line", "select": True}],
-            ["select_left_chars", "选择：[输入] 向左选中字符", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "left", "unit": "character", "select": True}],
-            ["select_right_chars", "选择：[输入] 向右选中字符", EDITABLE_TEXT, "输入正整数（默认：1）", "1", MoveCursorCommand, {"direction": "right", "unit": "character", "select": True}],
-        ],
-        "inline": [
-            ["inline_select_to_prev_text", "行内：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "inline", "until": "custom"}],
-            ["inline_select_to_next_text", "行内：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "inline", "until": "custom"}],
-        ],
-        "cell": [
-            ["cell_select_to_prev_condition", "表格单元格内：向前选择至 [选择] 终止条件", DROPDOWN, "请选择终止条件", ["第一个空行"], SelectUntilCommand, {"direction": "left", "scope": "cell", "until": "preset"}],
-            ["cell_select_to_next_condition", "表格单元格内：向后选择至 [选择] 终止条件", DROPDOWN, "请选择终止条件", ["第一个空行"], SelectUntilCommand, {"direction": "right", "scope": "cell", "until": "preset"}],
-            ["cell_select_to_prev_text", "表格单元格内：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "cell", "until": "custom"}],
-            ["cell_select_to_next_text", "表格单元格内：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "cell", "until": "custom"}],
-        ],
-        "paragraph": [
-            ["paragraph_select_to_prev_landmark", "段内：向前选择至 [选择] 文档标识", DROPDOWN, "请选择文档标识", ["第一个空行"], SelectUntilCommand, {"direction": "left", "scope": "paragraph", "until": "preset"}],
-            ["paragraph_select_to_next_landmark", "段内：向后选择至 [选择] 文档标识", DROPDOWN, "请选择文档标识", ["第一个空行"], SelectUntilCommand, {"direction": "right", "scope": "paragraph", "until": "preset"}],
-            ["paragraph_select_to_prev_text", "段内：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "paragraph", "until": "custom"}],
-            ["paragraph_select_to_next_text", "段内：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "paragraph", "until": "custom"}],
-        ],
-        "page": [
-            ["page_select_to_prev_landmark", "页内：向前选择至 [选择] 文档标识", DROPDOWN, "请选择文档标识", ["第一个空行"], SelectUntilCommand, {"direction": "left", "scope": "page", "until": "preset"}],
-            ["page_select_to_next_landmark", "页内：向后选择至 [选择] 文档标识", DROPDOWN, "请选择文档标识", ["第一个空行"], SelectUntilCommand, {"direction": "right", "scope": "page", "until": "preset"}],
-            ["page_select_to_prev_text", "页内：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "page", "until": "custom"}],
-            ["page_select_to_next_text", "页内：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "page", "until": "custom"}],
-        ],
-        "doc": [
-            ["doc_select_to_prev_landmark", "文档：向前选择至 [选择] 文档标识", DROPDOWN, "请选择文档标识", ["第一个空行"], SelectUntilCommand, {"direction": "left", "scope": "doc", "until": "preset"}],
-            ["doc_select_to_next_landmark", "文档：向后选择至 [选择] 文档标识", DROPDOWN, "请选择文档标识", ["第一个空行"], SelectUntilCommand, {"direction": "right", "scope": "doc", "until": "preset"}],
-            ["doc_select_to_prev_text", "文档：向前选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "left", "scope": "doc", "until": "custom"}],
-            ["doc_select_to_next_text", "文档：向后选择至 [输入] 终止文本", EDITABLE_TEXT, "输入终止文本", "", SelectUntilCommand, {"direction": "right", "scope": "doc", "until": "custom"}],
-        ],
-    },
-    "update": {
-        "text": [
-            ["replace_text", "替换：[输入] 新文本内容", EDITABLE_TEXT, "输入替换后的完整内容", "", ReplaceTextCommand, None],
-        ],
-        "font": [
-            ["set_font_family", "字体：[选择] 字体系列", DROPDOWN, "请选择字体", ["宋体", "黑体", "仿宋", "楷体", "Times New Roman", "Arial"], UpdateFontCommand, {"attribute": "family"}],
-            ["set_font_size", "字号：[选择] 预设字号", DROPDOWN, "请选择字号", ["初号", "一号", "小三", "10pt", "12pt", "14pt", "16pt"], UpdateFontCommand, {"attribute": "size"}],
-            ["adjust_font_size", "字号调整：[选择] 增大或减小", DROPDOWN, "请选择操作", ["增大一级", "减小一级"], AdjustFontSizeCommand, {"step": 1}],
-            ["set_font_color", "颜色：[选择] 预设颜色", DROPDOWN, "请选择颜色", ["红色", "蓝色", "绿色"], UpdateFontColorCommand, {"color_mode": "preset"}],
-        ],
-        "paragraph": [
-            ["set_line_spacing", "行距：[输入] 行距倍数", DROPDOWN, "默认1倍", "1", UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "times"}],
-            ["set_line_spacing", "行距：[输入] 最小磅值", DROPDOWN, "默认12磅", "12", UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "min_bounds"}],
-            ["set_custom_line_spacing", "行距：[输入] 自定义磅值", EDITABLE_TEXT, "默认12磅", "12", UpdateParagraphCommand, {"attribute": "line_spacing", "line_spacing_type": "fix"}],
-            ["set_paragraph_alignment", "对齐：[选择] 对齐方式", DROPDOWN, "请选择对齐模式", ["左对齐", "居中", "右对齐", "两端对齐"], UpdateParagraphCommand, {"attribute": "alignment"}],
-        ]
-    },
-    MIXING_TYPE_ID: {
-        "operations": [
-            ["merge_documents", "合并文档（无需输入）", READONLY_TEXT, "合并所有文档", READONLY_VALUE, MergeDocumentsCommand, None],
-        ]
-    }
-})
-
-
-
-
-可以参考已经实现的命令
-class SearchTextCommand(Command):
-    def __init__(self, pointer_after_search=None, **kwargs):
-        self.pointer_after_search = pointer_after_search  # "left" or "right" or None
-        super(SearchTextCommand, self).__init__(**kwargs)
-
-    def office_word_check(self):
-        if self.pointer_after_search not in self.consts.get("COLLAPSE_MAP"):
-            raise ValueError("参数非法: pointer_after_search")
-        if not self.content:
-            raise ValueError("参数非法: content")
-
-    def office_word_run(self, context: ActionContext) -> (bool, str):
-        # 搜索
-        COLLAPSE_MAP = self.consts.get("COLLAPSE_MAP")
-        selection = context.selection
-        find = selection.Find
-        find.ClearFormatting()
-        find.Text = self.content
-        found = find.Execute()
-
-        # 搜索不到直接返回
-        if not found:
-            return False, "无法定位，搜索不到"
-
-        # 搜到了的情况下
-        # 1. 不设置光标，直接选中
-        if self.pointer_after_search is None:  # 直接选中
-            selection.Select()  # 选择找到的第一个匹配项
-            return True, None
-
-        # 2. 说明搜索完还要移动
-        selection.Collapse(Direction=COLLAPSE_MAP.get(self.pointer_after_search))
-        return True, None
-
-
-class MoveCursorCommand(Command):
-    DIRECTION_METHODS = {
-        'up': 'MoveUp',
-        'down': 'MoveDown',
-        'left': 'MoveLeft',
-        'right': 'MoveRight'
-    }
-
-    def __init__(self, unit, direction, **kwargs):
-        self.direction = direction.lower()
-        self.unit = unit
-        super(MoveCursorCommand, self).__init__(**kwargs)
-        # self.unit_type = self.DIRECTION_MAPPING.get(self.direction)
-
-    def office_word_check(self):
-        if self.direction not in self.DIRECTION_METHODS:
-            raise ValueError("参数非法: direction")
-        if self.unit not in self.consts.get("SCOPE_MAP"):
-            raise ValueError("参数非法: unit")
-
-    def office_word_run(self, context: ActionContext) -> (bool, str):
-        # 获取正确的Unit类型
-        UNIT_TYPES = self.consts.get("SCOPE_MAP")
-        unit = UNIT_TYPES.get(self.unit)
-
-        # 获取对应的方法
-        method_name = self.DIRECTION_METHODS.get(self.direction)
-
-        # 执行移动操作
-        method = getattr(context.selection, method_name)
-        method(Unit=unit, Count=int(self.content))
-        return True, None
-参考：impl_Base类的定义，用于定义consts常量
-class OfficeWordImplBase:
-    def __init__(self):
-        from win32com.client import constants
-        self.__office_word_consts = {
-            "SYMBOL_MAP": {
-                "分页符": constants.wdPageBreak,
-                "换行符": constants.wdLineBreak,
-                "分节符": constants.wdSectionBreakNextPage,
-                "制表符": constants.wdTab
-            },
-            "ALIGN_MAP": {
-                "左对齐": constants.wdAlignParagraphLeft,
-                "居中": constants.wdAlignParagraphCenter,
-                "右对齐": constants.wdAlignParagraphRight,
-                "两端对齐": constants.wdAlignParagraphJustify
-            },
-            "ROW_SPACING_MAP": {
-                "倍数行距": constants.wdLineSpaceMultiple,
-                "最小行距": constants.wdLineSpaceAtLeast,
-                "固定行距": constants.wdLineSpaceExactly,
-            },
-            "SCOPE_MAP": {
-                "行": constants.wdLine,
-                "字符": constants.wdCharacter,
-                "段落": constants.wdParagraph,
-                "表格单元格": constants.wdCell,
-                "页面": constants.wdPage,
-                "整个文档": constants.wdStory
-            },
-            "BOUNDARY_CHECKS": {
-                "cell_start": lambda s: s.Information(constants.wdWithInTable),
-                "cell_end": lambda s: s.Information(constants.wdWithInTable),
-                "page_start": lambda s: s.Information(constants.wdActiveEndPageNumber) > 0,
-            },
-            "BOUNDARY_MAP": {
-                "line_start": (constants.wdLine, constants.wdMove),
-                "line_end": (constants.wdLine, constants.wdExtend),
-                "cell_start": (constants.wdCell, constants.wdMove),
-                "cell_end": (constants.wdCell, constants.wdExtend),
-                "page_start": (constants.wdPage, constants.wdMove),
-                "page_end": (constants.wdPage, constants.wdExtend),
-                "doc_start": (constants.wdStory, constants.wdMove),
-                "doc_end": (constants.wdStory, constants.wdExtend)
-            },
-            "COLLAPSE_MAP": {
-                "right": constants.wdCollapseEnd,
-                "left": constants.wdCollapseStart,
-            }
-        }
-
-    def office_word_run(self, context: ActionContext) -> (bool, str):
-        """返回是否执行成功
-        成功：意味着操作成功执行，如搜索到并选中，如果搜索不到，算失败，但是不报错
-        失败：执行直接失败，或操作不生效（如不在单元格中，无法移动到当前单元格开头，或搜索不到指定内容）
-        """
-        raise NotImplementedError
-
-    def office_word_check(self):
-        pass
-
-参考：commandBase类的定义，用于切换策略
-class Command(OfficeWordImplBase):
-    action_type_id = None
-    action_name = None
-
-    def __init__(self, action_type_id, action_type_name, action_name, action_id, action_content, **kwargs):
-        super(Command, self).__init__()
-        self.content = action_content
-        self.action_type_id = action_type_id
-        self.action_type_name = action_type_name
-        self.action_id = action_id
-        self.action_name = action_name
-
-        # 动态设置执行策略
-        self.check_param = None
-        self.consts = None
-        self.run_impl = None
-        self.set_impl()  # 目前切换是office word的实现
-
-        # 执行预检
-        self.pre_check()
-
-    def set_impl(self):
-        self.check_param = self.office_word_check
-        self.consts = self.__office_word_consts
-        self.run_impl = self.office_word_run
-
-    def run(self, context: ActionContext):
-        level, msg = "unknown", "unknown"
-        run_impl = self.run_impl
-        if self.run_impl is None:
-            raise ValueError("先执行 set impl")
-        try:
-            res = run_impl(context)
-            if res is None or res is True:
-                res = [True, None]
-            success, msg = res
-            msg = msg or ""
-            level = "info" if success else "warn"
-        except Exception as e:
-            level = "error"
-            msg = f"{str(e)}"
-        finally:
-            context.add_log(level=level, msg=msg, file_name_without_extension=context.file_name_without_extension)
-        return
-
-    def pre_check(self):
-        self.office_word_check()
-
-    def is_mixing(self):
-        return self.action_type_id == MIXING_TYPE_ID
-
-注意：
-1. 在 office_word_check中仔细检查所有可能边界条件，如果不符合，就直接 error
-2. 所有用到的之前设定的参数，需要在自己的__init__方法中赋值的
-3. 通过 self.office_word_consts 获取所有可能的参数
-    如果需要，在office_word_check方法中进行校验
-    如果需要用到其他常量，自己定义到当前类中
-4. 命令实现的代码中，不能出现pywin32的constants引用，如果需要，需要添加到base类的常量中
-5. 实现过程中，需要确保，所有内容均被实现 ，不能出现仅作为示例的内容
-6. 实现过程中：
-    1. 如果正常，返回 True, None
-    2. 如果参数异常，校验的时候，报错
-    3. 如果和预期不符，比如搜索内容，搜索不到的话，返回 False，和msg
-不必自己try catch，最外层已经做了错误处理
-
-完成后，把所有的实现（总共有13个command，包括我给你的已经实现的示例，完整输出一遍
-
-
-
+TODO
+    引入调试模式后，对于下载的修改
+        将测试生成的文件放到0-test目录下
+            目前如果已经有结果之后，调试时候结果会覆盖
+            需要每个container 动态接受自己的parent是什么，test的时候，需要将container的parent设置为0-test
+    13. ✨✨循环和条件的补充
+        当搜索后选择所有搜索结果时
+        循环的时候，所有需要循环的用一个别的背景色标识
+    测试相关的功能函数
