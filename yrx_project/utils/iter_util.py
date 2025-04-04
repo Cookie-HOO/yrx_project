@@ -50,3 +50,21 @@ def remove_item_from_list(l: typing.List[typing.Any], remove: typing.Any, iter_d
     else:
         remove_item_from_list_(l, remove)
     return l
+
+
+def swap_items_in_origin_list(index1, index2, l) -> list:
+    """
+    交换l中index1和index2的元素, 原地操作
+    注意：负数索引会认为非法，如果出现负数索引，返回原list
+    """
+    # 参数合法性校验
+    length = len(l)
+    if length == 0:
+        return []
+    if index1 < 0 or index2 < 0 or index1 >= length or index2 >= length:
+        return l
+    if index1 == index2:
+        return l
+    l[index1], l[index2] = l[index2], l[index1]
+    return l
+

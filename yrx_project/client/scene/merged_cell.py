@@ -17,7 +17,7 @@ from yrx_project.scene.match_table.main import *
 from yrx_project.scene.merged_cell.const import LanguageEnum
 from yrx_project.scene.merged_cell.main import do_with_code, sort_merged_cell_df
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
-from yrx_project.utils.file import get_file_name_without_extension, make_zip, copy_file, open_file_or_folder_in_browser
+from yrx_project.utils.file import get_file_name_without_extension, make_zip, copy_file, open_file_or_folder
 from yrx_project.utils.iter_util import find_repeat_items
 from yrx_project.utils.time_obj import TimeObj
 

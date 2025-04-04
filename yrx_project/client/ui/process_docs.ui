@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1355</width>
-    <height>619</height>
+    <width>1774</width>
+    <height>808</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
    <bool>true</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_5">
+   <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_8">
       <item>
@@ -86,58 +86,164 @@
       <item>
        <widget class="QPushButton" name="reset_button">
         <property name="text">
-         <string>重置所有</string>
+         <string>重置输入输出</string>
         </property>
        </widget>
       </item>
      </layout>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0">
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout">
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <widget class="QWidget" name="layoutWidget">
+       <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="4,6">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <layout class="QVBoxLayout" name="verticalLayout">
           <item>
-           <widget class="QPushButton" name="add_docs_button">
-            <property name="text">
-             <string>➕</string>
-            </property>
-           </widget>
+           <layout class="QHBoxLayout" name="horizontalLayout_6">
+            <item>
+             <widget class="QPushButton" name="add_docs_button">
+              <property name="text">
+               <string>➕</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_5">
+              <property name="text">
+               <string>第一步 ：拖拽或点击批量上传文档</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_5">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="step1_help_info_button">
+              <property name="text">
+               <string>❓第一步的帮助信息</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>第一步 ：拖拽或点击批量上传文档</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_5">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QPushButton" name="step1_help_info_button">
-            <property name="text">
-             <string>❓第一步的帮助信息</string>
-            </property>
-           </widget>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QTableWidget" name="docs_table">
+              <property name="verticalScrollBarPolicy">
+               <enum>Qt::ScrollBarAsNeeded</enum>
+              </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarAsNeeded</enum>
+              </property>
+              <property name="autoScroll">
+               <bool>true</bool>
+              </property>
+              <property name="horizontalScrollMode">
+               <enum>QAbstractItemView::ScrollPerItem</enum>
+              </property>
+              <property name="columnCount">
+               <number>5</number>
+              </property>
+              <attribute name="verticalHeaderVisible">
+               <bool>true</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>文档名称</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>文件大小</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>修改时间</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>操作按钮</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>__文档路径</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="QTableWidget" name="docs_table">
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <widget class="QPushButton" name="add_action_button">
+              <property name="text">
+               <string>➕</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>第二步 ：添加动作流</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="action_tools_button">
+              <property name="text">
+               <string>🔧</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="step2_help_info_button">
+              <property name="text">
+               <string>❓第二步的帮助信息</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QTableWidget" name="actions_table">
+            <property name="contextMenuPolicy">
+             <enum>Qt::NoContextMenu</enum>
+            </property>
             <property name="verticalScrollBarPolicy">
              <enum>Qt::ScrollBarAsNeeded</enum>
             </property>
@@ -151,19 +257,24 @@
              <enum>QAbstractItemView::ScrollPerItem</enum>
             </property>
             <property name="columnCount">
-             <number>4</number>
+             <number>5</number>
             </property>
             <attribute name="verticalHeaderVisible">
              <bool>true</bool>
             </attribute>
             <column>
              <property name="text">
-              <string>文档名称</string>
+              <string>类型</string>
              </property>
             </column>
             <column>
              <property name="text">
-              <string>页数</string>
+              <string>动作</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>动作内容</string>
              </property>
             </column>
             <column>
@@ -173,7 +284,7 @@
             </column>
             <column>
              <property name="text">
-              <string>__文档路径</string>
+              <string>__动作id</string>
              </property>
             </column>
            </widget>
@@ -181,338 +292,231 @@
          </layout>
         </item>
        </layout>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="acceptDrops">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>&gt;&gt;</string>
-        </property>
-        <property name="autoDefault">
-         <bool>false</bool>
-        </property>
-        <property name="flat">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <widget class="QComboBox" name="add_action_combo">
-            <item>
-             <property name="text">
-              <string>定位</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>选择</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>修改</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>合并</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="add_action_button">
-            <property name="text">
-             <string>➕</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>第二步 ：添加动作流</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QPushButton" name="step2_help_info_button">
-            <property name="text">
-             <string>❓第二步的帮助信息</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QTableWidget" name="actions_table">
-          <property name="verticalScrollBarPolicy">
-           <enum>Qt::ScrollBarAsNeeded</enum>
-          </property>
-          <property name="horizontalScrollBarPolicy">
-           <enum>Qt::ScrollBarAsNeeded</enum>
-          </property>
-          <property name="autoScroll">
-           <bool>true</bool>
-          </property>
-          <property name="horizontalScrollMode">
-           <enum>QAbstractItemView::ScrollPerItem</enum>
-          </property>
-          <property name="columnCount">
-           <number>4</number>
-          </property>
-          <attribute name="verticalHeaderVisible">
-           <bool>true</bool>
-          </attribute>
-          <column>
-           <property name="text">
-            <string>类型</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>动作</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>动作内容</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>操作按钮</string>
-           </property>
-          </column>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="Line" name="line">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <widget class="QPushButton" name="run_button">
-        <property name="text">
-         <string>▶</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>第三步 ：执行与下载</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer_3">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="step3_help_info_button">
-        <property name="text">
-         <string>❓第三步的帮助信息</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_5">
-      <item>
-       <widget class="QLabel" name="result_detail_text">
-        <property name="text">
-         <string>🚫执行耗时：--毫秒</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer_6">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="action_logic_view_button">
-        <property name="text">
-         <string>💡查看执行逻辑图</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="download_result_button">
-        <property name="text">
-         <string>下载结果📄</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="Line" name="line_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="3,0,7">
-      <item>
+      </widget>
+      <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>文件树</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QTreeView" name="result_tree"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="Line" name="line_3">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout_4" stretch="1,9">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="4,6">
           <item>
-           <widget class="QLabel" name="label_7">
-            <property name="text">
-             <string>一行：</string>
-            </property>
-           </widget>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_10">
+              <item>
+               <widget class="QPushButton" name="run_button">
+                <property name="text">
+                 <string>▶批量执行</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>第三步 ：执行与下载</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="run_log_button">
+                <property name="text">
+                 <string>📄执行日志</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="step3_help_info_button">
+                <property name="text">
+                 <string>❓第三步的帮助信息</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_2"/>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_5">
+              <item>
+               <widget class="QLabel" name="label">
+                <property name="text">
+                 <string>结果文件预览</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="result_detail_text">
+                <property name="text">
+                 <string>🚫执行总计耗时：--秒</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="download_result_button">
+                <property name="text">
+                 <string>📄下载结果</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QTreeView" name="result_tree"/>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QPushButton" name="result_previw_col_num_sub_button">
-            <property name="text">
-             <string>-</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="result_previw_col_num_text">
-            <property name="text">
-             <string>--</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="result_previw_col_num_add_button">
-            <property name="text">
-             <string>+</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_12">
-            <property name="text">
-             <string>个</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
+           <layout class="QVBoxLayout" name="verticalLayout_8">
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_11">
+              <item>
+               <widget class="QPushButton" name="debug_button">
+                <property name="text">
+                 <string>🛠️单步调试</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>第四步：调试【可选】</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_9">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="debug_next_button">
+                <property name="text">
+                 <string>➡️下一步</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="step4_help_info_button">
+                <property name="text">
+                 <string>❓第四步的帮助信息</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_7">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_7">
+                <item>
+                 <widget class="QLabel" name="label_4">
+                  <property name="text">
+                   <string>📄调试记录</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="actions_with_log_table">
+              <property name="contextMenuPolicy">
+               <enum>Qt::NoContextMenu</enum>
+              </property>
+              <property name="verticalScrollBarPolicy">
+               <enum>Qt::ScrollBarAsNeeded</enum>
+              </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarAsNeeded</enum>
+              </property>
+              <property name="autoScroll">
+               <bool>true</bool>
+              </property>
+              <property name="horizontalScrollMode">
+               <enum>QAbstractItemView::ScrollPerItem</enum>
+              </property>
+              <property name="columnCount">
+               <number>4</number>
+              </property>
+              <attribute name="verticalHeaderVisible">
+               <bool>true</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>类型</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>动作</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>动作内容</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>调试信息</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
-        <item>
-         <layout class="QGridLayout" name="result_previw_grid_layout">
-          <item row="0" column="1">
-           <widget class="QLabel" name="test2_preview_img">
-            <property name="text">
-             <string>缩略图2</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="test3_preview_img">
-            <property name="text">
-             <string>缩略图3</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="test1_preview_img">
-            <property name="text">
-             <string>缩略图1</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLabel" name="test4_preview_img">
-            <property name="text">
-             <string>缩略图4</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
        </layout>
-      </item>
-     </layout>
+      </widget>
+     </widget>
     </item>
    </layout>
   </widget>

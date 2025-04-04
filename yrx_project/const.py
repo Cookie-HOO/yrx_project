@@ -10,6 +10,7 @@ ALL_DATA_PATH = os.path.join(PROJECT_PATH, "data")
 LOGGER_FILE_PATH = os.path.join(PROJECT_PATH, "logger.log")
 ROOT_IN_EXE_PATH = sys._MEIPASS if is_prod else PROJECT_PATH
 STATIC_PATH = os.path.join(ROOT_IN_EXE_PATH, "static")
+TEMP_PATH = os.path.join(PROJECT_PATH, ".catfisher_temp")  # 临时路径的处理：使用tempfile，程序结束时清理
 
 # formatter
 DATE_FORMATTER = '%Y-%m-%d'

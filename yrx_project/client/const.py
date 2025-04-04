@@ -4,7 +4,7 @@ from yrx_project.const import *
 
 WINDOW_INIT_SIZE = (1068, 681)
 WINDOW_INIT_DISTANCE = (800, 200)
-WINDOW_TITLE = "工作空间"
+WINDOW_TITLE = "catfisher"
 STATIC_FILE_PATH = os.path.join(STATIC_PATH, "{file}")
 UI_PATH = os.path.join(ROOT_IN_EXE_PATH, 'ui', "{file}") if is_prod else os.path.join(os.path.dirname(__file__), "ui", "{file}")
 
@@ -20,3 +20,13 @@ COLOR_STR_RED = "🟥"
 COLOR_STR_YELLOW = "🟨"
 COLOR_STR_GREEN = "🟩"
 COLOR_STR_BLUE = "🟦"
+
+# item type
+EDITABLE_TEXT = "editable_text"
+EDITABLE_INT = "editable_int"
+EDITABLE_COLOR = "editable_color"
+READONLY_TEXT = "readonly_text"
+DROPDOWN = "dropdown"
+
+READONLY_VALUE = "---"
+
