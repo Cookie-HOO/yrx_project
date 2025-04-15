@@ -6,6 +6,13 @@ import pandas as pd
 from yrx_project.scene.match_table.const import MATCH_OPTION, MAKEUP_MAIN_COL, ADD_COL_OPTION, MAKEUP_MAIN_COL_WITH_OVERWRITE
 from yrx_project.utils.string_util import remove_by_ignore_policy
 
+STR_EQUAL = "相等"
+STR_CONTAINED = "被主表包含"
+
+MATCH_FUNC_MAP = {
+    STR_EQUAL: lambda m, h: m == h,
+    STR_CONTAINED: lambda m, h: h in m,
+}
 
 def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match_info=False) -> (pd.DataFrame, dict, dict):
     """
@@ -134,7 +141,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
         main_df["%匹配行索引%"] = striped_main_col.apply(lambda row: [index for index, v in striped_match_col.items() if match_func(row, v)] if not pd.isnull(row) and row else None)
         main_df[f"{match_id}%%匹配附加信息（文字）"] = main_df["%匹配行索引%"].apply(match_text)
         main_df[f"{match_id}%%匹配附加信息（行数）"] = main_df["%匹配行索引%"].apply(len)
-        match_extra_cols_index_list = [main_df.columns.get_loc(i) for i in [f"{match_id}%%匹配附加信息（文字）", f"{match_id}%%匹配附加信息（行数）"]]
+        match_extra_cols_index_list = [main_df.columns.get_loc(i) -1 for i in [f"{match_id}%%匹配附加信息（文字）", f"{match_id}%%匹配附加信息（行数）"]]
 
         # 携带列或者补充到主表
         catch_cols_index_list = []
@@ -146,7 +153,7 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
                         match_df.loc[indices, catch_col_name].astype(str).replace('nan', '')  # 处理 NaN
                     ) if (isinstance(indices, list) and indices) else ''
                 )
-                catch_cols_index_list.append(main_df.columns.get_loc(f'{match_id}%%{catch_col_name}'))
+                catch_cols_index_list.append(main_df.columns.get_loc(f'{match_id}%%{catch_col_name}') -1)
 
             elif catch_col_with_policy[1] == MAKEUP_MAIN_COL_WITH_OVERWRITE:
                 main_col_name = catch_col_with_policy[2]
@@ -182,10 +189,6 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
                 )
 
 
-        # 清理临时列
-        main_df.drop(columns=['%匹配行索引%'], inplace=True)
-
-
         # 拼接返回信息
         # 内容为空的行索引列表（原列值为 None）
         no_content_indices = main_df[main_df["%匹配行索引%"].isnull()].index
@@ -209,11 +212,14 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
             "match_extra_cols_index_list": match_extra_cols_index_list,
         }
         # 已经匹配的索引
-        main_col_index = main_df.columns.get_loc(main_col)
+        main_col_index = main_df.columns.get_loc(main_col) -1
         match_rows = match_mapping.get(main_col_index) or []
         # 加入新索引
         match_rows.extend(matched_indices)
         match_mapping[main_col_index] = match_rows
+        # 清理临时列
+        main_df.drop(columns=['%匹配行索引%'], inplace=True)
+
 
     # 组装总体信息
     total_length = len(main_df)

@@ -303,7 +303,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>第二步 ：设置匹配条件与操作</string>
+         <string>第二步 ：设置匹配条件与操作（每个辅助表对应一个条件）</string>
         </property>
        </widget>
       </item>
@@ -371,6 +371,11 @@
       </column>
       <column>
        <property name="text">
+        <string>匹配方式</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
         <string>列：从辅助表增加</string>
        </property>
       </column>
@@ -395,18 +400,6 @@
          <red>207</red>
          <green>240</green>
          <blue>196</blue>
-        </color>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>删除满足条件的行</string>
-       </property>
-       <property name="background">
-        <color>
-         <red>242</red>
-         <green>195</green>
-         <blue>189</blue>
         </color>
        </property>
       </column>

@@ -16,6 +16,7 @@ from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
 from yrx_project.utils.file import get_file_name_without_extension, make_zip, copy_file, open_file_or_folder
 from yrx_project.utils.iter_util import find_repeat_items
 from yrx_project.utils.string_util import IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN
+from yrx_project.scene.match_table.main import STR_EQUAL, STR_CONTAINED
 from yrx_project.utils.time_obj import TimeObj
 
 
@@ -187,9 +188,10 @@ class Worker(BaseWorker):
                             "match_col": conditions_df["辅助表匹配列"][i],
                         }],
                         "catch_cols": final_catch_cols,
-                        "match_policy": "first",  # conditions_df["重复值策略"][i],
+                        "match_func": MATCH_FUNC_MAP.get(conditions_df["匹配方式"][i]),
+                        # "match_policy": "first",  # conditions_df["重复值策略"][i],
                         "match_ignore_policy": conditions_df["匹配忽略内容"][i],
-                        "delete_policy": conditions_df["删除满足条件的行"][i],
+                        # "delete_policy": conditions_df["删除满足条件的行"][i],
                         "match_detail_text": conditions_df["列：匹配附加信息（文字）可编辑"][i],  # ｜ 分割的内容
                     }
                 )
@@ -576,7 +578,7 @@ v1.0.6
 
         # 2. 添加匹配条件
         self.conditions_table_wrapper = TableWidgetWrapper(self.conditions_table)
-        self.conditions_table_wrapper.set_col_width(3, 190).set_col_width(4, 200).set_col_width(5, 260).set_col_width(6, 150).set_col_width(7, 150)
+        self.conditions_table_wrapper.set_col_width(3, 190).set_col_width(5, 200).set_col_width(6, 260).set_col_width(7, 150).set_col_width(8, 150)
         self.add_condition_button.clicked.connect(self.add_condition)
 
         # 3. 执行与下载
@@ -821,7 +823,10 @@ v1.0.6
                 {"label": ADD_COL_OPTION},
                 {"label": MAKEUP_MAIN_COL, "children": [
                     {"label": main_label} for main_label in df_main_columns
-                ]}
+                ]},
+                {"label": MAKEUP_MAIN_COL_WITH_OVERWRITE, "children": [
+                    {"label": main_label} for main_label in df_main_columns
+                ]},
             ]}
             cascader_options.append(column_option)
         self.conditions_table_wrapper.add_rich_widget_row([
@@ -837,22 +842,17 @@ v1.0.6
                 "values": df_help_columns,  # 辅助表匹配列
             }, {
                 "type": "dropdown",
-                "values": [IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN],  # 重复值策略
+                "values": [IGNORE_NOTHING, IGNORE_PUNC, IGNORE_CHINESE_PAREN, IGNORE_ENGLISH_PAREN],  # 忽略内容
                 "cur_index": 1,  # 默认只忽略所有中英文标点符号
                 "options": {
                     "multi": True,
                     "bg_colors": [COLOR_YELLOW] + [None] * 4,
                     "first_as_none": True,
                 }
-            # }, {
-            #     "type": "dropdown",
-            #     "values": ["***不从辅助表增加列***", *df_help_columns],  # 列：从辅助表增加
-            #     "options": {
-            #         "multi": True,
-            #         "bg_colors": [COLOR_YELLOW] + [None] * len(df_help_columns),
-            #         "first_as_none": True,
-            #     }
-
+            }, {
+                "type": "dropdown",
+                "values": [STR_EQUAL, STR_CONTAINED],
+                "cur_index": 0,  # 默认严格匹配
             }, {
                 "type": "dropdown",
                 "values": cascader_options,  # 列：从辅助表增加
@@ -869,13 +869,13 @@ v1.0.6
             }, {
                 "type": "readonly_text",  # 列：系统匹配到的行数
                 "value": "匹配到的行数",
-            }, {
-                "type": "dropdown",
-                "values": ["***不删除行***", *MATCH_OPTIONS],
-                "options": {
-                    "multi": True,
-                    "first_as_none": True,
-                }
+            # }, {
+            #     "type": "dropdown",
+            #     "values": ["***不删除行***", *MATCH_OPTIONS],
+            #     "options": {
+            #         "multi": True,
+            #         "first_as_none": True,
+            #     }
             }, {
                 "type": "button_group",
                 "values": [
@@ -885,32 +885,11 @@ v1.0.6
                             row_index),
                     },
                 ],
-
             }
         ])
         self.tip_loading.hide()
         self.set_status_text(status_msg)
 
-    @set_error_wrapper
-    def check_table_condition(self, row_index, row, *args, **kwargs):
-        df_main = self.get_df_by_row_index(0, "main")
-        df_help = self.get_df_by_row_index(row_index, "help")
-        main_col = row["主表匹配列"]
-        help_col = row["辅助表匹配列"]
-
-        duplicate_info = check_match_table(df_main, [{
-            "df": df_help,
-            "match_cols": [{
-                "main_col": main_col,
-                "match_col": help_col,
-            }],
-        }])
-        if duplicate_info:
-            dup_values = ", ".join([str(i.get("duplicate_cols", {}).get("cell_values", [])[0]) for i in duplicate_info])
-            msg = "列：{}\t重复值{}".format(help_col, dup_values)
-            self.modal("warn", f"经过检查辅助表存在重复: \n{msg}")
-        else:
-            self.modal("info", "检查通过，辅助表不存在重复")
 
     @set_error_wrapper
     def run(self, *args, **kwargs):
@@ -947,6 +926,15 @@ v1.0.6
         self.overall_cols_index = run_result.get("overall_cols_index")
         self.match_for_main_col = run_result.get("match_for_main_col")
 
+        # self.result_table_wrapper.fill_data_with_color(
+        #     self.matched_df,
+        #     cell_style_func=lambda df, row_index, col_index, odd=self.odd_cols_index, even=self.even_cols_index,
+        #                            last_two=self.overall_cols_index, match_for_main_col=self.match_for_main_col: fill_color_v3(
+        #         odd_index=odd, even_index=even, last_index=last_two, main_col_map=match_for_main_col,
+        #         col_index=col_index, row_index=row_index
+        #     )
+        # )
+
         self.result_detail_text.setText(tip)
         self.tip_loading.hide()
         self.set_status_text(status_msg)
@@ -962,13 +950,11 @@ v1.0.6
             duration = round(v.get("time_cost") * 1000, 2)
             match_percent = len(v.get('match_index_list')) / (len(v.get('match_index_list')) + len(v.get('unmatch_index_list')))
             unmatch_percent = len(v.get('unmatch_index_list')) / (len(v.get('match_index_list')) + len(v.get('unmatch_index_list')))
-            delete_percent = len(v.get('delete_index_list')) / (len(v.get('match_index_list')) + len(v.get('unmatch_index_list')))
             data.append({
                 "表名": k,
-                # "耗时": f"{duration}s",
+                "耗时": f"{duration}s",
                 "匹配行数": f"{len(v.get('match_index_list'))}（{round(match_percent * 100, 2)}%）",
                 "未匹配行数": f"{len(v.get('unmatch_index_list'))}（{round(unmatch_percent * 100, 2)}%）",
-                "需要删除行数": f"{len(v.get('delete_index_list'))}（{round(delete_percent * 100, 2)}%）",
             })
         self.table_modal(pd.DataFrame(data), size=(500, 200))
 
