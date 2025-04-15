@@ -620,7 +620,7 @@ class TableWidgetWrapper:
                         worksheet.write(row + 1, col, df.iloc[row, col], cell_format)  # +1是去掉标题行
 
         # 保存Excel
-        writer.save()
+        # writer.save()
         writer.close()
 
     def save_with_merged_cells(self, path):
