@@ -342,6 +342,10 @@ class TableWidgetWrapper:
         assert len(headers) == self.row_length()
         self.table_widget.setVerticalHeaderLabels(headers)
 
+    def update_vertical_header(self, row_index, value):
+        assert 0 <= row_index < self.table_widget.rowCount(), f"行索引 {row_index} 超出范围"
+        self.table_widget.setVerticalHeaderItem(row_index, QTableWidgetItem(str(value)))
+
     def add_rich_widget_row(self, row):
         """增加复杂的组件行，支持以下类型
         只读文本: readonly_text:

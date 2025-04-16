@@ -7,7 +7,7 @@ block_cipher = None
 a = Analysis(
     ['yrx_project\\main_prod.py'],
     pathex=["."],
-    datas=[('.\\yrx_project\\client\\ui', '.\\ui'), ('..\\static', '.\\static')],
+    datas=[('.\\yrx_project\\client\\ui', '.\\ui'), ('.\\static', '.\\static')],
     binaries=[],
     hiddenimports=[],
     hookspath=[],
@@ -28,7 +28,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='工作空间_v1.0.5',
+    name='catfisher_v1.0.7',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

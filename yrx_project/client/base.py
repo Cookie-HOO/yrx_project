@@ -13,7 +13,8 @@ from PyQt5.QtGui import QPixmap
 from yrx_project.client.const import *
 from yrx_project.client.utils.code_widget import CodeDialog
 from yrx_project.client.utils.exception import ClientWorkerException
-from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox, TipWidgetWithLoading
+from yrx_project.client.utils.message_widget import TipWidgetWithCountDown, MyQMessageBox, TipWidgetWithLoading, \
+    FormModal
 from yrx_project.utils.file import get_file_name_without_extension, copy_file, get_file_name_with_extension, make_zip
 from yrx_project.utils.logger import logger_sys_error
 from yrx_project.utils.time_obj import TimeObj
@@ -163,6 +164,36 @@ class BaseWindow(QMainWindow):
         elif level == "loading":
             tip_with_loading = TipWidgetWithLoading()
             return tip_with_loading
+        elif level == "form":
+            fields_config = kwargs.get("fields_config", [])
+            """
+            fields_config = [
+                {
+                    "id": "name",
+                    "type": "editable_text",
+                    "label": "请输入姓名：",
+                    "default": "张三",
+                    "placeholder": "请输入姓名",
+                    "limit": lambda x: "不能为空" if len(x) == 0 else "",
+                },
+                {
+                    "id": "tip",
+                    "type": "tip",
+                    "label": "一行提示文本，仅用作提示",
+                },
+            ]
+            """
+            # 一个表单的弹窗，将 fields_config 转化成一个可提交表单
+            # 默认是yes，还有取消按钮
+            reply, result = FormModal.show_form(title=title, msg=msg, fields_config=fields_config)
+            """
+            result: {
+                "name": "张三",  # 用户输入的内容
+                "tip": "一行提示文本，仅用作提示",
+            }
+            """
+            return reply, result
+
 
     def table_modal(self, table_widget_or_wrapper_or_df, size=None):
         """
@@ -298,9 +329,9 @@ class BaseWindow(QMainWindow):
     def download_zip_from_path(self, path, default_topic):
         file_path = self.download_file_modal(f"{TimeObj().time_str}_{default_topic}.zip")
         if not file_path:
-            return False
+            return False, None
         make_zip(path, file_path.rstrip(".zip"))
-        return True
+        return True, file_path
 
     # copy_file(DAILY_REPORT_RESULT_TEMPLATE_PATH, filePath)
 
