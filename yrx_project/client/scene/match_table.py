@@ -342,7 +342,9 @@ class MyTableMatchClient(WindowWithMainWorkerBarely):
         总体
             help_info_button：点击弹出帮助信息
             release_info_button：点击弹窗版本更新信息
+            reset_button: 重置按钮
         第一步：添加主表、辅助表
+            step1_help_info_button: 第一步的帮助信息
             add_main_table_button：添加主表
             add_help_table_button：添加辅助表
             main_tables_table：主表列表
@@ -350,11 +352,13 @@ class MyTableMatchClient(WindowWithMainWorkerBarely):
             help_tables_table：辅助表列表
                 表名 ｜ 选中工作表 ｜ 标题所在行 ｜ 操作按钮 ｜ __表路径
         第二步：添加匹配条件
+            step2_help_info_button: 第二步的帮助信息
             add_condition_button：设置匹配条件
                 主表匹配列 ｜ 辅助表名 ｜ 辅助表匹配列 ｜ 列：从辅助表增加 ｜ 列：匹配附加信息（文字）可编辑 ｜ 列：匹配附加信息（行数）｜操作按钮
             conditions_table：条件列表
             add_condition_help_info_button：设置匹配条件帮助信息
         第三步：执行
+            step3_help_info_button: 第三步的帮助信息
             run_button：执行按钮
             result_detail_text：执行详情
                  🚫执行耗时：--毫秒；共匹配：--行（--%）
@@ -528,6 +532,9 @@ v1.0.5
 
 v1.0.6
 1. [修复]当第一列不是表头时的隐藏问题
+
+v1.0.7
+1. 匹配条件增加「被主表包含」
 """
 
     # 第一步：上传文件的帮助信息
@@ -754,12 +761,6 @@ v1.0.6
         self.tip_loading.hide()
         self.set_status_text(status_msg)
         self.table_modal(df, size=(400, 200))
-
-    @set_error_wrapper
-    def get_df_by_row_index(self, row_index, table_type, nrows=None, *args, **kwargs):
-        df_config = self.get_df_config_by_row_index(row_index, table_type)
-        df_config["nrows"] = nrows
-        return read_excel_file_with_multiprocessing([df_config])[0]
 
     @set_error_wrapper
     def get_df_config_by_row_index(self, row_index, table_type, *args, **kwargs):
