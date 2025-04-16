@@ -1,17 +1,21 @@
+import os
 import time
 
 import pandas as pd
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QMessageBox
 from pandas.core.groupby import DataFrameGroupBy
 
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import UI_PATH
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
-from yrx_project.scene.split_table.main import split_table
+from yrx_project.scene.split_table.const import SCENE_TEMP_PATH
+from yrx_project.scene.split_table.main import SplitTable, sheets2excels, TEMP_FILE_PATH
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
-from yrx_project.utils.file import get_file_name_without_extension
+from yrx_project.utils.file import get_file_name_without_extension, open_file_or_folder, copy_file
 from yrx_project.utils.iter_util import find_repeat_items, dedup_list
+from yrx_project.utils.time_obj import TimeObj
 
 
 class Worker(BaseWorker):
@@ -24,7 +28,7 @@ class Worker(BaseWorker):
     custom_after_split_each_table_signal = pyqtSignal(dict)
 
     custom_after_run_signal = pyqtSignal(dict)  # 自定义信号
-    custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
+    custom_after_sheet2excel_signal = pyqtSignal(dict)  # 自定义信号
 
     def my_run(self):
         stage = self.get_param("stage")  # self.equal_buffer_value.value()
@@ -135,6 +139,7 @@ class Worker(BaseWorker):
             status_msg = f"✅计算任务元信息成功，共耗时：{round(time.time() - start_cal, 2)}s："
 
             self.custom_init_split_table_signal.emit({
+                "df": df,
                 "grouped_obj": grouped,
                 "group_cols": group_cols,
                 "status_msg": status_msg,
@@ -143,6 +148,7 @@ class Worker(BaseWorker):
             start_run = time.time()
             grouped_obj = self.get_param("grouped_obj")
             group_values = self.get_param("group_values")
+            raw_df = self.get_param("raw_df")
             table_wrapper = self.get_param("table_wrapper")
             path = table_wrapper.get_cell_value(0, 4)
             sheet_name = table_wrapper.get_cell_value(0, 1)  # 工作表
@@ -151,31 +157,36 @@ class Worker(BaseWorker):
             names = self.get_param("names")
             total_task = len(names)
 
-            # TODO：目前的实现是直接全部执行，没有回调
-            split_table(path, sheet_name, row_num_for_column, names, group_values)
+            split_table = SplitTable(path, sheet_name, row_num_for_column, raw_df)
+            split_table.init_env()
 
-            # for index, (name, group) in enumerate(zip(names, group_values)):
-            #     """
-            #     group: {"col1": "a", "col2": "b", "col3": "c"}
-            #     name: "a_b_c表"
-            #     """
-            #     self.custom_before_split_each_table_signal.emit({
-            #         "status_msg": f"拆分中：{index+1}/{total_task}",
-            #         "row_index": index,
-            #     })
-            #     split_table(path, sheet_name, row_num_for_column, name, group)
-            #     # todo: 真正执行
-            #     time.sleep(2)
-            #     self.custom_after_split_each_table_signal.emit({
-            #         "row_index": index
-            #     })
-
+            for index, (name, group) in enumerate(zip(names, group_values)):
+                """
+                group: {"col1": "a", "col2": "b", "col3": "c"}
+                name: "a_b_c表"
+                """
+                self.refresh_signal.emit(
+                     f"拆分中：{index+1}/{total_task}"
+                )
+                self.custom_before_split_each_table_signal.emit({
+                    "row_index": index,
+                })
+                split_table.copy_rows_to(name, group)
+                self.custom_after_split_each_table_signal.emit({
+                    "row_index": index
+                })
+            split_table.wrap_up()
+            self.refresh_signal.emit(
+                f"✅执行成功，共耗时：{round(time.time() - start_run, 2)}s：",
+            )
             self.custom_after_run_signal.emit({
-                "status_msg": f"✅执行成功，共耗时：{round(time.time() - start_run, 2)}s：",
+                "duration": round(time.time() - start_run, 2),
+                "split_num": total_task,
             })
 
-        elif stage == "download_result":
-            pass
+        elif stage == "sheet2excel":
+            sheets2excels()
+            self.custom_after_sheet2excel_signal.emit({})
 
 
 class MyTableSplitClient(WindowWithMainWorkerBarely):
@@ -198,8 +209,6 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         第三步：执行
             step3_help_info_button: 第三步的帮助信息
             run_button：执行按钮
-            split2excel_radio：拆分成多个excel的radio
-            split2sheet_radio：拆分成多个sheet的radio
             result_detail_text：执行详情
                  🚫执行耗时：--毫秒；共拆分：--个
             download_result_button: 下载结果按钮
@@ -239,6 +248,7 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         <h2>单表拆分示例</h2>
         </hr>
         <p>此场景可以用来将一个excel表拆分成多个excel表或sheet，需要指定一个或多个拆分列，例如按班级性别拆分：</p>
+        <p>结果可以下载为单文件多个sheet，或者多个excel文件</p>
         <h4>上传：excel</h4>
         <div class="table-container">
             <div class="table-wrapper1">
@@ -365,13 +375,15 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         # 2. 添加拆分条件
         self.add_split_cols_button.clicked.connect(self.add_split_cols)
         self.split_cols_table_wrapper = TableWidgetWrapper(self.split_cols_table)
+        self.split_cols_table_wrapper.set_col_width(0, 160)
 
         # 3. 执行与下载
         self.run_button.clicked.connect(self.run_button_click)
         self.download_result_button.clicked.connect(self.download_result_button_click)
         self.result_table_wrapper = TableWidgetWrapper(self.result_table)
+        self.result_table_wrapper.set_col_width(0, 160)
 
-
+        self.done = None  # 任务执行成功的标志位，只有done了，才可以下载
 
     def register_worker(self):
         return Worker()
@@ -383,6 +395,14 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
 
     @set_error_wrapper
     def reset_all(self, *args, **kwargs):
+        if self.done is False:
+            return self.modal(level="warn", msg="正在执行中，请勿操作")
+        self.done = None
+        self.tables_wrapper.clear()
+        self.split_cols_table_wrapper.clear()
+        self.result_table_wrapper.clear()
+        self.set_status_text("")
+        self.result_detail_text.setText("🚫执行耗时：--毫秒；共拆分：--个")
         pass
 
     @set_error_wrapper
@@ -496,6 +516,8 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         拆分列 ｜ 操作按钮
         :return:
         """
+        if self.done is False:
+            return self.modal(level="warn", msg="正在执行中，请勿操作")
         if self.tables_wrapper.row_length() == 0:
             return self.modal(level="error", msg="请先上传待拆分表")
 
@@ -539,6 +561,11 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         2. 执行时一律拆分成sheet
             下载时根据 拆成多个excel文件，还是多个sheet决定下载成什么
         """
+        if self.tables_wrapper.row_length() == 0 or self.split_cols_table_wrapper.row_length() == 0:
+            return self.modal(level="warn", msg="请先上传文件和指定拆分列")
+        if self.done is False:
+            return self.modal(level="warn", msg="正在执行中，请勿操作")
+
         # 读取文件进行上传
         params = {
             "stage": "init_split_table",  # 第二阶段：添加条件
@@ -560,6 +587,7 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
 
         group_cols = init_split_table_result.get("group_cols")
         grouped_obj: DataFrameGroupBy = init_split_table_result.get("grouped_obj")
+        raw_df: pd.DataFrame = init_split_table_result.get("df")
         split_num = grouped_obj.ngroups
         self.tip_loading.hide()
 
@@ -569,11 +597,11 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
 
         # 个数
         need_split, result = self.modal(level="form", msg=f"确定要拆分吗，即将拆分 {split_num} 个？", fields_config = [
-            # {
-            #     "id": "tip",
-            #     "type": "tip",
-            #     "label": f"拆分{n}个",
-            # },
+            {
+                "id": "tip",
+                "type": "tip",
+                "label": f"",
+            },
             {
                 "id": "split_name_format",
                 "type": "editable_text",
@@ -585,6 +613,7 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         ])
         if not need_split:
             return
+        self.done = False  # 开始进入计算周期
         split_name_format = result.get("split_name_format")
         # 获取分组统计结果
         size_series = grouped_obj.size().reset_index(name='行数')
@@ -594,6 +623,9 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
             axis=1
         )
         df = size_series[['拆分文件/sheet', '行数']]
+        df["拆分文件/sheet"] = df["拆分文件/sheet"].apply(lambda x: x.replace("%", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_").replace("[", "_").replace("]", "_").replace(":", "_").replace("：", "_").replace("'", "_"))
+        df["拆分文件/sheet"] = df["拆分文件/sheet"].apply(lambda x: x[:20] if len(x) > 20 else x)
+        df["拆分文件/sheet"] = df["拆分文件/sheet"].apply(lambda x: x if x else "%EMPTY%")
 
         # 初始化结果表
         self.result_table_wrapper.fill_data_with_color(df)
@@ -619,11 +651,11 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
             "table_wrapper": self.tables_wrapper,
             "grouped_obj": grouped_obj,
             "group_values": groups,
+            "raw_df": raw_df,
             "names": df["拆分文件/sheet"].to_list(),
         }
         self.worker.add_params(params).start()
         # self.tip_loading.set_titles(["表拆分.", "表拆分..", "表拆分..."]).show()
-
 
     @set_error_wrapper
     def custom_before_split_each_table(self, before_split_table_result):
@@ -632,8 +664,6 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         result_table：结果表
             拆分文件/sheet名 ｜ 行数
         """
-        status_msg = before_split_table_result.get("status_msg")
-        self.set_status_text(status_msg)
         row_index = before_split_table_result.get("row_index")
         self.result_table_wrapper.update_vertical_header(row_index, "🏃")
         pass
@@ -657,7 +687,12 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
              🚫执行耗时：--毫秒；共拆分：--个
         """
         status_msg = after_run_result.get("status_msg")
+        duration = after_run_result.get("duration")
+        split_num = after_run_result.get("split_num")
         self.set_status_text(status_msg)
+        self.done = True
+
+        self.result_detail_text.setText(f"✅执行耗时：{duration}秒；共拆分：{split_num}个")
         pass
 
     @set_error_wrapper
@@ -666,8 +701,45 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         split2excel_radio：拆分成多个excel的radio
         split2sheet_radio：拆分成多个sheet的radio
         """
-        pass
+        if not self.done:
+            return self.modal(level="warn", msg="任务没有执行完成，无法下载")
+        need_download, result = self.modal(level="form", msg=f"下载结果", fields_config=[
+            {
+                "id": "download_format",
+                "type": "radio_group",
+                "labels": ["拆分成多个excel文件", "拆分成单文件多sheet"],
+                "default": "拆分成多个excel文件",
+            },
+        ])
+        if not need_download:
+            return
+
+        # 拆分sheet，直接下载
+        if result.get("download_format") == "拆分成单文件多sheet":
+            file_path = self.download_file_modal(f"{TimeObj().time_str}_拆分结果.xlsx")
+            copy_file(TEMP_FILE_PATH, file_path)
+            return self.modal(level="info", msg=f"✅下载成功", funcs=[
+                {"text": "打开所在文件夹", "func": lambda: open_file_or_folder(os.path.dirname(file_path)),
+                 "role": QMessageBox.ActionRole},
+                {"text": "打开文件", "func": lambda: open_file_or_folder(file_path), "role": QMessageBox.ActionRole},
+            ])
+        # 拆分excel，需要异步将sheet转成excel
+        params = {
+            "stage": "sheet2excel",  # 第三阶段：执行
+        }
+        self.worker.add_params(params).start()
+        self.tip_loading.set_titles(["准备下载文件，对齐格式.", "准备下载文件，对齐格式..", "准备下载文件，对齐格式..."]).show()
 
     @set_error_wrapper
-    def custom_after_download(self):
-        pass
+    def custom_after_sheet2excel(self, after_download_result):
+        status_msg = after_download_result.get("status_msg")
+        self.set_status_text(status_msg)
+        self.tip_loading.hide()
+        duration = after_download_result.get("duration")
+        is_success, file_path = self.download_zip_from_path(SCENE_TEMP_PATH, "拆分结果")
+        if is_success:
+            return self.modal(level="info", msg=f"✅下载压缩包成功，共耗时：{duration}秒", funcs=[
+                {"text": "打开所在文件夹", "func": lambda: open_file_or_folder(os.path.dirname(file_path)),
+                 "role": QMessageBox.ActionRole},
+                {"text": "打开文件", "func": lambda: open_file_or_folder(file_path), "role": QMessageBox.ActionRole},
+            ])

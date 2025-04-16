@@ -158,21 +158,15 @@ class ExcelStyleValue:
         :param del_old: 如果为True，拷贝完删除老的（剪切）
         :return:
         """
-        old_sheet_name = self.sht.name
-        if append:
-            for name in new_name_list:
-                self.sht.api.Copy(After=self.wb.sheets[-1].api)
-                self.wb.sheets[-1].name = name
-                self.shts.append(self.wb.sheets[-1])
-            self.sht = self.wb.sheets[-1]
-        else:
-            for name in new_name_list:
-                self.sht.api.Copy(Before=self.wb.sheets[0].api)
-                self.wb.sheets[0].name = name
-                self.shts.append(self.wb.sheets[0])
-            self.sht = self.wb.sheets[0]
+        old_sheet = self.sht
+        for name in new_name_list:
+            # 复制整个工作表内容
+            new_sheet = self.wb.sheets.add(name, after=self.wb.sheets[-1] if append else None)
+            old_sheet.api.UsedRange.Copy(new_sheet.api.Range("A1"))
+
         if del_old:
-            self.batch_delete_sheet([old_sheet_name])
+            old_sheet.delete()
+
         return self
 
     def switch_sheet(self, sheet_name_or_index: SHEET_TYPE):
@@ -186,6 +180,8 @@ class ExcelStyleValue:
         """将index全都先转成名字，如果有index
         :param sheet_name_or_index_list:
         """
+        if len(sheet_name_or_index_list) == 0:
+            return self
         sheet_names = [sheet.name for sheet in self.wb.sheets]
         del_sheets = []
         for sheet_name_or_index in sheet_name_or_index_list:

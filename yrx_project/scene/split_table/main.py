@@ -2,95 +2,114 @@ import os
 import shutil
 import typing
 
+import pandas as pd
+from openpyxl.reader.excel import load_workbook
+
 from yrx_project.scene.split_table.const import SCENE_TEMP_PATH
 from yrx_project.utils.excel_style import ExcelStyleValue
 from yrx_project.utils.file import copy_file
 
-
-def cleanup_scene_folder():
-    if os.path.exists(SCENE_TEMP_PATH):
-        shutil.rmtree(SCENE_TEMP_PATH)
-    os.makedirs(SCENE_TEMP_PATH)
+TEMP_FILE_PATH = os.path.join(SCENE_TEMP_PATH, "split_table.xlsx")
 
 
-def split_table(path: str, sheet_name_or_index: typing.Union[str, int], row_num_for_column: int,
-                names: typing.List[str], groups: typing.List[typing.Dict[str, str]]) -> str:
+def sheets2excels():
     """
-    Splits an Excel sheet into multiple sheets based on grouping conditions.
-
-    :param path: Path to the original Excel file.
-    :param sheet_name_or_index: Name or index of the sheet to split.
-    :param row_num_for_column: Row number containing column headers.
-    :param names: List of new sheet names.
-    :param groups: List of dictionaries defining grouping conditions.
-    :return: Path to the temporary Excel file with split sheets.
+    将指定path的excel的多个sheet转成多个excel，保留所有格式
+    TEMP_FILE_PATH 指向的excel的每个sheet会被保存为单独的excel文件
+    新文件以sheet名命名，最后删除原始文件
     """
-    cleanup_scene_folder()
-    # Create a temporary copy of the Excel file
-    temp_path = os.path.join(SCENE_TEMP_PATH, "split_table.xlsx")
-    copy_file(path, temp_path)
+    try:
+        # 加载原始工作簿（保留格式）
+        wb = load_workbook(TEMP_FILE_PATH)
+        # 获取目录路径
+        dir_path = os.path.dirname(TEMP_FILE_PATH)
+        # 为每个sheet创建单独的工作簿
+        for sheet_name in wb.sheetnames:
+            # 创建新工作簿
+            new_wb = load_workbook(TEMP_FILE_PATH)
+            # 删除新工作簿中不需要的sheet
+            for sheet in new_wb.sheetnames:
+                if sheet != sheet_name:
+                    del new_wb[sheet]
+            # 处理文件名中的非法字符
+            safe_sheet_name = "".join(
+                c for c in sheet_name if c.isalnum() or c in (' ', '_', '-')
+            ).strip()
+            # 设置输出路径
+            output_path = os.path.join(dir_path, f"{safe_sheet_name}.xlsx")
+            # 保存新工作簿
+            new_wb.save(output_path)
+        # 关闭原始工作簿
+        wb.close()
+        # 删除原始文件
+        os.remove(TEMP_FILE_PATH)
+        return True, f"成功分割为 {len(wb.sheetnames)} 个文件，保留原格式"
+    except Exception as e:
+        return False, f"错误: {str(e)}"
 
-    # Initialize Excel interaction
-    excel = ExcelStyleValue(temp_path, sheet_name_or_index, run_mute=True)
-    original_sheet_name = excel.sht.name
+class SplitTable:
 
-    # Remove all other sheets except the original
-    all_sheets = excel.get_sheets_name()
-    sheets_to_delete = [s for s in all_sheets if s != original_sheet_name]
-    excel.batch_delete_sheet(sheets_to_delete)
+    def __init__(self, path: str, sheet_name_or_index: typing.Union[str, int], row_num_for_column: int,
+                 raw_df: pd.DataFrame):
+        self.path = path
+        self.sheet_name_or_index = sheet_name_or_index
+        self.row_num_for_column = int(row_num_for_column)
+        self.raw_df = raw_df
+        self.excel_obj = None
 
-    # Validate input lengths
-    if len(names) != len(groups):
-        raise ValueError("The lengths of names and groups must be the same.")
+        self.CUR_SHEET = sheet_name_or_index
 
-    # Process each group
-    for name, group in zip(names, groups):
-        # Copy the original sheet for each new group
-        excel.batch_copy_sheet([name], append=True, del_old=False)
-        excel.switch_sheet(name)
+    def init_env(self):
+        # 1. 初始化路径, 拷贝临时文件
+        if os.path.exists(SCENE_TEMP_PATH):
+            shutil.rmtree(SCENE_TEMP_PATH)
+        os.makedirs(SCENE_TEMP_PATH)
+        temp_path = TEMP_FILE_PATH
+        copy_file(self.path, temp_path)
 
-        # Map headers to column numbers
-        header_row = row_num_for_column
-        headers = excel.sht.range(f'{header_row}:{header_row}').value
-        if not headers or not headers[0]:
-            raise ValueError(f"No headers found in row {header_row}.")
-        headers = headers[0]
-        header_col_map = {header: idx + 1 for idx, header in enumerate(headers)}
+        # 2. 生成 ExcelStyleValue, 删除其他sheet
+        self.excel_obj = ExcelStyleValue(temp_path, self.sheet_name_or_index, run_mute=True)
 
-        # Prepare conditions
-        conditions = {}
-        for key, value in group.items():
-            if key not in header_col_map:
-                raise ValueError(f"Header '{key}' not found in row {header_row}.")
-            conditions[header_col_map[key]] = value
+        all_sheets = self.excel_obj.get_sheets_name()
+        sheets_to_delete = [s for s in all_sheets if s != self.CUR_SHEET]
+        self.excel_obj.batch_delete_sheet(sheets_to_delete)
 
-        # Determine data rows range
-        start_data_row = row_num_for_column + 1
-        if conditions:
-            first_col = next(iter(conditions.keys()))
-            last_row_cell = excel.sht.range((start_data_row, first_col)).end('down')
-            last_row = last_row_cell.row
-        else:
-            last_row = excel.sht.range('A1').end('down').row
+        # 3. 删除当前sheet列名以下的行
+        self.excel_obj.batch_delete_row(self.row_num_for_column + 1, 1_000_000)  # 删除从指定行号+1开始的所有行
 
-        # Filter rows
-        current_row = last_row
-        while current_row >= start_data_row:
-            match = True
-            for col_num, expected in conditions.items():
-                cell_value = excel.get_cell((current_row, col_num))
-                if cell_value != expected:
-                    match = False
-                    break
-            if not match:
-                excel.delete_row(current_row)
-            current_row -= 1
+    def copy_rows_to(self, name, group_value):
+        """
+        将符合条件的数据从原始 DataFrame 中复制到新的 sheet 中。
 
-    # Remove the original sheet
-    excel.batch_delete_sheet([original_sheet_name])
+        :param name: 新的 sheet 名称
+        :param group_value: 用于筛选数据的条件字典，例如 {"col1": "1", "col2": 2}
+        """
+        if self.excel_obj is None:
+            raise ValueError("Run init_env first")
 
-    # Save and close
-    excel.save()
-    excel.discard()
+        # 1. 创建新 sheet（如果不存在）
+        self.excel_obj.batch_copy_sheet([name], append=True, del_old=False)
+        self.excel_obj.switch_sheet(name)
 
-    return temp_path
+        # 2. 筛选符合条件的行
+        condition = pd.Series(True, index=self.raw_df.index)  # 初始化条件为全 True
+        for col, value in group_value.items():
+            condition &= (self.raw_df[col] == value)  # 逐步叠加筛选条件
+
+        filtered_df = self.raw_df[condition]  # 筛选出符合条件的行
+
+        # 3. 将筛选出的行写入新 sheet
+        start_row = self.row_num_for_column + 1  # 从指定行号的下一行开始写入
+        for i, (_, row) in enumerate(filtered_df.iterrows()):
+            values = row.tolist()  # 获取行数据
+            self.excel_obj.set_row(start_row + i, values)  # 写入到 Excel 中
+
+        # 4. 切换回主 sheet
+        self.excel_obj.switch_sheet(self.CUR_SHEET)  # 复位
+
+    def wrap_up(self):
+        # 删除临时 sheet
+        self.excel_obj.batch_delete_sheet([self.CUR_SHEET])
+
+        # 保存并关闭 Excel 文件
+        self.excel_obj.save()

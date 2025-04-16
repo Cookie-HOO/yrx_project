@@ -4,6 +4,7 @@ import typing
 
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QMessageBox
 
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import UI_PATH
@@ -390,15 +391,19 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
     def right_click_menu_save_file(self, path):
         # 下载目录
         if os.path.isdir(path):
-            if self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理"):
-                self.modal(level="info", msg="✅下载成功")
+            is_success, file_path = self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理")
+            if is_success:
+                return self.modal(level="info", msg=f"✅下载压缩包成功", funcs=[
+                    {"text": "打开所在文件夹", "func": lambda: open_file_or_folder(os.path.dirname(file_path)),
+                     "role": QMessageBox.ActionRole},
+                    {"text": "打开文件", "func": lambda: open_file_or_folder(file_path),
+                     "role": QMessageBox.ActionRole},
+                ])
             return
         # 下载文件
         save_to = self.download_file_modal(TimeObj().time_str + get_file_name_with_extension(path))
         if save_to:
             copy_file(path, save_to)
-
-
 
     def register_worker(self):
         return Worker()
@@ -549,8 +554,16 @@ class MyDocsProcessorClient(WindowWithMainWorkerBarely):
 
     @set_error_wrapper
     def download_result(self, *args, **kwargs):
-        if self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理"):
-            self.modal(level="info", msg="✅下载成功")
+        is_success, file_path = self.download_zip_from_path(path=SCENE_TEMP_PATH, default_topic="文档批处理")
+        if is_success:
+            return self.modal(level="info", msg=f"✅下载压缩包成功", funcs=[
+                {"text": "打开所在文件夹", "func": lambda: open_file_or_folder(os.path.dirname(file_path)),
+                 "role": QMessageBox.ActionRole},
+                {"text": "打开文件", "func": lambda: open_file_or_folder(file_path),
+                 "role": QMessageBox.ActionRole},
+            ])
+        return
+
 
 
     def debug_run(self):

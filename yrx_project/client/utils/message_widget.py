@@ -3,7 +3,7 @@ import time
 
 from PyQt5.QtGui import QMovie, QIcon, QColor
 from PyQt5.QtWidgets import QMessageBox, QWidget, QLabel, QVBoxLayout, QTextBrowser, QDialog, QFormLayout, QHBoxLayout, \
-    QPushButton, QLineEdit
+    QPushButton, QLineEdit, QGroupBox, QButtonGroup, QRadioButton
 from PyQt5.QtCore import QTimer, QTime, Qt
 
 from yrx_project.client.const import COLOR_WHITE
@@ -237,12 +237,19 @@ class FormModal(QDialog):
             "type": "tip",
             "label": "一行提示文本，仅用作提示",
         },
+        {
+            "id": "download_format",
+            "type": "radio_group",
+            "labels": ["拆分成多excel", "拆分成多sheet"],
+            "default": "拆分成多excel",
+        },
     ]
 
-    reply, result = FormModal(title=title, msg=msg, fields_config=fields_config)
+    reply, result = FormModal.show_form(title=title, msg=msg, fields_config=fields_config)
     result: {
         "name": "张三",  # 用户输入的内容
         "tip": "一行提示文本，仅用作提示",
+        "download_format": "拆分成多excel",
     }
     """
 
@@ -253,11 +260,13 @@ class FormModal(QDialog):
         self.fields_config = fields_config
         self.inputs = {}  # 存储所有输入控件
         self.errors = {}  # 存储验证错误信息
+        self.radio_groups = {}  # 存储单选按钮组
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
-        self.setGeometry(100, 100, 400, 300)
+        self.setMinimumHeight(200)
+        # self.setGeometry(100, 100, 400, 300)
 
         layout = QVBoxLayout()
 
@@ -311,6 +320,24 @@ class FormModal(QDialog):
                 tip_label = QLabel(label)
                 layout.addRow(tip_label)
 
+            elif field_type == "radio_group":
+                # 创建单选按钮组
+                group_box = QGroupBox(label)
+                vbox = QVBoxLayout()
+                button_group = QButtonGroup(self)
+
+                # 添加单选按钮
+                for i, option in enumerate(field.get("labels", [])):
+                    radio_btn = QRadioButton(option)
+                    if option == field.get("default"):
+                        radio_btn.setChecked(True)
+                    button_group.addButton(radio_btn, i)
+                    vbox.addWidget(radio_btn)
+
+                group_box.setLayout(vbox)
+                layout.addRow(group_box)
+                self.radio_groups[field_id] = button_group
+
     def validate_field(self, field, value):
         """字段验证"""
         error_msg = field["limit"](value)
@@ -342,6 +369,11 @@ class FormModal(QDialog):
                 self.result[field_id] = self.inputs[field_id].text()
             elif field["type"] == "tip":
                 self.result[field_id] = field.get("label", "")
+            elif field["type"] == "radio_group":
+                button_group = self.radio_groups[field_id]
+                checked_button = button_group.checkedButton()
+                if checked_button:
+                    self.result[field_id] = checked_button.text()
 
         self.accept()
 
