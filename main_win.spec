@@ -7,7 +7,7 @@ block_cipher = None
 a = Analysis(
     ['yrx_project\\main_prod.py'],
     pathex=["."],
-    datas=[('.\\yrx_project\\client\\ui', '.\\ui'), ('..\\static', '.\\static')],
+    datas=[('.\\yrx_project\\client\\ui', '.\\ui'), ('.\\static', '.\\static')],
     binaries=[],
     hiddenimports=[],
     hookspath=[],
