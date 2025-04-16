@@ -3,19 +3,26 @@ import time
 import pandas as pd
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal
+from pandas.core.groupby import DataFrameGroupBy
 
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import UI_PATH
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
+from yrx_project.scene.split_table.main import split_table
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
 from yrx_project.utils.file import get_file_name_without_extension
-from yrx_project.utils.iter_util import find_repeat_items
+from yrx_project.utils.iter_util import find_repeat_items, dedup_list
 
 
 class Worker(BaseWorker):
     custom_after_upload_signal = pyqtSignal(dict)  # 自定义信号
     custom_preview_df_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_add_split_cols_signal = pyqtSignal(dict)  # 自定义信号
+    custom_init_split_table_signal = pyqtSignal(dict)  # 自定义信号
+
+    custom_before_split_each_table_signal = pyqtSignal(dict)  # 自定义信号
+    custom_after_split_each_table_signal = pyqtSignal(dict)
+
     custom_after_run_signal = pyqtSignal(dict)  # 自定义信号
     custom_after_download_signal = pyqtSignal(dict)  # 自定义信号
 
@@ -105,8 +112,68 @@ class Worker(BaseWorker):
                 "status_msg": status_msg,
 
             })
+        elif stage == "init_split_table":
+            start_cal = time.time()
+            table_wrapper = self.get_param("table_wrapper")
+            path = table_wrapper.get_cell_value(0, 4)
+            sheet_name = table_wrapper.get_cell_value(0, 1)  # 工作表
+            row_num_for_column = table_wrapper.get_cell_value(0, 2)  # 列所在行
+            df_config = {
+                "path": path,
+                "sheet_name": sheet_name,
+                "row_num_for_column": row_num_for_column,
+            }
+
+            df = read_excel_file_with_multiprocessing([
+                df_config
+            ])[0]
+
+            split_cols_table_wrapper = self.get_param("split_cols_table_wrapper")
+            group_cols = dedup_list(split_cols_table_wrapper.get_data_as_df()["拆分列"].to_list())
+
+            grouped = df.groupby(group_cols)
+            status_msg = f"✅计算任务元信息成功，共耗时：{round(time.time() - start_cal, 2)}s："
+
+            self.custom_init_split_table_signal.emit({
+                "grouped_obj": grouped,
+                "group_cols": group_cols,
+                "status_msg": status_msg,
+            })
         elif stage == "run":  # 任务处在执行的阶段
-            pass
+            start_run = time.time()
+            grouped_obj = self.get_param("grouped_obj")
+            group_values = self.get_param("group_values")
+            table_wrapper = self.get_param("table_wrapper")
+            path = table_wrapper.get_cell_value(0, 4)
+            sheet_name = table_wrapper.get_cell_value(0, 1)  # 工作表
+            row_num_for_column = table_wrapper.get_cell_value(0, 2)  # 列所在行
+
+            names = self.get_param("names")
+            total_task = len(names)
+
+            # TODO：目前的实现是直接全部执行，没有回调
+            split_table(path, sheet_name, row_num_for_column, names, group_values)
+
+            # for index, (name, group) in enumerate(zip(names, group_values)):
+            #     """
+            #     group: {"col1": "a", "col2": "b", "col3": "c"}
+            #     name: "a_b_c表"
+            #     """
+            #     self.custom_before_split_each_table_signal.emit({
+            #         "status_msg": f"拆分中：{index+1}/{total_task}",
+            #         "row_index": index,
+            #     })
+            #     split_table(path, sheet_name, row_num_for_column, name, group)
+            #     # todo: 真正执行
+            #     time.sleep(2)
+            #     self.custom_after_split_each_table_signal.emit({
+            #         "row_index": index
+            #     })
+
+            self.custom_after_run_signal.emit({
+                "status_msg": f"✅执行成功，共耗时：{round(time.time() - start_run, 2)}s：",
+            })
+
         elif stage == "download_result":
             pass
 
@@ -302,6 +369,8 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         # 3. 执行与下载
         self.run_button.clicked.connect(self.run_button_click)
         self.download_result_button.clicked.connect(self.download_result_button_click)
+        self.result_table_wrapper = TableWidgetWrapper(self.result_table)
+
 
 
     def register_worker(self):
@@ -465,47 +534,130 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
     @set_error_wrapper
     def run_button_click(self, *args, **kwargs):
         """
-    3. 点击执行后，是一个弹窗，可以配置名字，且显示个数，比如
-        共 37 个：{院系}-{教师}
-    1. 执行时一律拆分成sheet
-        下载时根据 拆成多个excel文件，还是多个sheet决定下载成什么
+        1. 点击执行后，是一个弹窗，可以配置名字，且显示个数，比如
+            共 37 个：{院系}-{教师}
+        2. 执行时一律拆分成sheet
+            下载时根据 拆成多个excel文件，还是多个sheet决定下载成什么
         """
-        pass
+        # 读取文件进行上传
+        params = {
+            "stage": "init_split_table",  # 第二阶段：添加条件
+            "table_wrapper": self.tables_wrapper,
+            "split_cols_table_wrapper": self.split_cols_table_wrapper,
+        }
+        self.worker.add_params(params).start()
+        self.tip_loading.set_titles(["任务元信息.", "任务元信息..", "任务元信息..."]).show()
 
     @set_error_wrapper
-    def init_split_table(self, before_split_table_result):
-        """要拆分成多少个，每个的名字是什么的回调
-        初始化结果表，拆分的名字 + 行数
-        result_table：结果表
-            拆分文件/sheet名 ｜ 行数
+    def custom_init_split_table(self, init_split_table_result):
         """
-        pass
+        1. 计算元信息后的回调，注入要拆分的个数，进行弹窗提示
+        2. 初始化结果表
+        3. 开始执行任务
+        """
+        status_msg = init_split_table_result.get("status_msg")
+        self.set_status_text(status_msg)
+
+        group_cols = init_split_table_result.get("group_cols")
+        grouped_obj: DataFrameGroupBy = init_split_table_result.get("grouped_obj")
+        split_num = grouped_obj.ngroups
+        self.tip_loading.hide()
+
+        # 格式
+        cols = self.split_cols_table_wrapper.get_data_as_df()["拆分列"].to_list()
+        default_split_name_format = "-".join(["{" + col + "}"for col in cols])
+
+        # 个数
+        need_split, result = self.modal(level="form", msg=f"确定要拆分吗，即将拆分 {split_num} 个？", fields_config = [
+            # {
+            #     "id": "tip",
+            #     "type": "tip",
+            #     "label": f"拆分{n}个",
+            # },
+            {
+                "id": "split_name_format",
+                "type": "editable_text",
+                "label": "拆分文件/sheet名格式",
+                "default": default_split_name_format,
+                "placeholder": "文件/sheet名格式",
+                "limit": lambda x: "格式不能为空" if len(x) == 0 else "",
+            },
+        ])
+        if not need_split:
+            return
+        split_name_format = result.get("split_name_format")
+        # 获取分组统计结果
+        size_series = grouped_obj.size().reset_index(name='行数')
+        # 生成格式化分组名称
+        size_series['拆分文件/sheet'] = size_series.apply(
+            lambda row: split_name_format.format(**{col: row[col] for col in group_cols}),
+            axis=1
+        )
+        df = size_series[['拆分文件/sheet', '行数']]
+
+        # 初始化结果表
+        self.result_table_wrapper.fill_data_with_color(df)
+
+        # 开始执行任务
+        groups = []  # 存储结果的列表
+
+        # 遍历所有分组键
+        for key in grouped_obj.groups.keys():
+            # 将元组键转换为字典
+            if not isinstance(key, tuple):
+                key = (key,)
+            group_dict = {}
+            for col_name, value in zip(group_cols, key):
+                group_dict[col_name] = value
+            groups.append(group_dict)
+        """
+        [{"col1": "一班", "col2": "男"}, {"col1": "二班", "col2": "女"}]
+        """
+
+        params = {
+            "stage": "run",  # 第三阶段：执行
+            "table_wrapper": self.tables_wrapper,
+            "grouped_obj": grouped_obj,
+            "group_values": groups,
+            "names": df["拆分文件/sheet"].to_list(),
+        }
+        self.worker.add_params(params).start()
+        # self.tip_loading.set_titles(["表拆分.", "表拆分..", "表拆分..."]).show()
+
 
     @set_error_wrapper
-    def custom_before_split_table(self, before_split_table_result):
+    def custom_before_split_each_table(self, before_split_table_result):
         """准备要拆分的那个table时进行回调
         修改对应结果表的行头emoji
         result_table：结果表
             拆分文件/sheet名 ｜ 行数
         """
+        status_msg = before_split_table_result.get("status_msg")
+        self.set_status_text(status_msg)
+        row_index = before_split_table_result.get("row_index")
+        self.result_table_wrapper.update_vertical_header(row_index, "🏃")
         pass
 
     @set_error_wrapper
-    def custom_after_split_table(self, after_split_table_result):
+    def custom_after_split_each_table(self, after_split_table_result):
         """拆分完的那个table时进行回调
         修改对应结果表的行头emoji
         result_table：结果表
             拆分文件/sheet名 ｜ 行数
         """
+        row_index = after_split_table_result.get("row_index")
+        self.result_table_wrapper.update_vertical_header(row_index, "✅")
         pass
 
     @set_error_wrapper
-    def custom_after_run(self):
+    def custom_after_run(self, after_run_result):
         """
         拆分任务结束的回调
         result_detail_text：执行详情
              🚫执行耗时：--毫秒；共拆分：--个
         """
+        status_msg = after_run_result.get("status_msg")
+        self.set_status_text(status_msg)
         pass
 
     @set_error_wrapper

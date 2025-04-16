@@ -2,7 +2,8 @@ import os
 import time
 
 from PyQt5.QtGui import QMovie, QIcon, QColor
-from PyQt5.QtWidgets import QMessageBox, QWidget, QLabel, QVBoxLayout, QTextBrowser, QDialog
+from PyQt5.QtWidgets import QMessageBox, QWidget, QLabel, QVBoxLayout, QTextBrowser, QDialog, QFormLayout, QHBoxLayout, \
+    QPushButton, QLineEdit
 from PyQt5.QtCore import QTimer, QTime, Qt
 
 from yrx_project.client.const import COLOR_WHITE
@@ -217,6 +218,139 @@ class TipWidgetWithLoading(QDialog):
         self.titles = titles
         return self
 
+
+class FormModal(QDialog):
+    """
+    # 一个表单的弹窗，将 fields_config 转化成一个可提交表单
+    # 默认是yes，还有取消按钮
+    fields_config = [
+        {
+            "id": "name",
+            "type": "editable_text",
+            "label": "请输入姓名：",
+            "default": "张三",
+            "placeholder": "请输入姓名",
+            "limit": lambda x: "不能为空" if len(x) == 0 else "",
+        },
+        {
+            "id": "tip",
+            "type": "tip",
+            "label": "一行提示文本，仅用作提示",
+        },
+    ]
+
+    reply, result = FormModal(title=title, msg=msg, fields_config=fields_config)
+    result: {
+        "name": "张三",  # 用户输入的内容
+        "tip": "一行提示文本，仅用作提示",
+    }
+    """
+
+    def __init__(self, title, msg, fields_config):
+        super().__init__()
+        self.title = title
+        self.msg = msg
+        self.fields_config = fields_config
+        self.inputs = {}  # 存储所有输入控件
+        self.errors = {}  # 存储验证错误信息
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(100, 100, 400, 300)
+
+        layout = QVBoxLayout()
+
+        # 添加提示信息
+        if self.msg:
+            msg_label = QLabel(self.msg)
+            layout.addWidget(msg_label)
+
+        # 创建表单布局
+        form_layout = QFormLayout()
+        self.create_form_fields(form_layout)
+        layout.addLayout(form_layout)
+
+        # 添加按钮
+        btn_layout = QHBoxLayout()
+        self.submit_btn = QPushButton("确定")
+        self.cancel_btn = QPushButton("取消")
+        self.submit_btn.clicked.connect(self.submit)
+        self.cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(self.submit_btn)
+        btn_layout.addWidget(self.cancel_btn)
+        layout.addLayout(btn_layout)
+
+        self.setLayout(layout)
+
+    def create_form_fields(self, layout):
+        """根据配置生成表单字段"""
+        for field in self.fields_config:
+            field_type = field.get("type")
+            field_id = field.get("id")
+            label = field.get("label", "")
+
+            if field_type == "editable_text":
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText(field.get("placeholder", ""))
+                input_widget.setText(field.get("default", ""))
+                self.inputs[field_id] = input_widget
+                layout.addRow(QLabel(label), input_widget)
+
+                # 添加实时验证
+                if "limit" in field:
+                    error_label = QLabel()
+                    error_label.setStyleSheet("color: red;")
+                    layout.addRow("", error_label)
+                    self.errors[field_id] = error_label
+                    input_widget.textChanged.connect(
+                        lambda text, f=field: self.validate_field(f, text)
+                    )
+
+            elif field_type == "tip":
+                tip_label = QLabel(label)
+                layout.addRow(tip_label)
+
+    def validate_field(self, field, value):
+        """字段验证"""
+        error_msg = field["limit"](value)
+        error_label = self.errors.get(field["id"])
+        if error_label:
+            error_label.setText(error_msg)
+        return not error_msg
+
+    def validate_all(self):
+        """验证所有字段"""
+        valid = True
+        for field in self.fields_config:
+            if field.get("type") == "editable_text" and "limit" in field:
+                value = self.inputs[field["id"]].text()
+                if not self.validate_field(field, value):
+                    valid = False
+        return valid
+
+    def submit(self):
+        """提交表单"""
+        if not self.validate_all():
+            QMessageBox.warning(self, "验证失败", "请检查输入内容")
+            return
+
+        self.result = {}
+        for field in self.fields_config:
+            field_id = field["id"]
+            if field["type"] == "editable_text":
+                self.result[field_id] = self.inputs[field_id].text()
+            elif field["type"] == "tip":
+                self.result[field_id] = field.get("label", "")
+
+        self.accept()
+
+    @classmethod
+    def show_form(cls, title, msg, fields_config):
+        """静态方法用于显示表单"""
+        dialog = cls(title, msg, fields_config)
+        reply = dialog.exec_()
+        return (reply == QDialog.Accepted, dialog.result if reply == QDialog.Accepted else {})
 
 # 测试代码
 # from PyQt5.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
