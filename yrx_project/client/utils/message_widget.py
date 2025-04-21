@@ -3,7 +3,7 @@ import time
 
 from PyQt5.QtGui import QMovie, QIcon, QColor
 from PyQt5.QtWidgets import QMessageBox, QWidget, QLabel, QVBoxLayout, QTextBrowser, QDialog, QFormLayout, QHBoxLayout, \
-    QPushButton, QLineEdit, QGroupBox, QButtonGroup, QRadioButton
+    QPushButton, QLineEdit, QGroupBox, QButtonGroup, QRadioButton, QCheckBox
 from PyQt5.QtCore import QTimer, QTime, Qt
 
 from yrx_project.client.const import COLOR_WHITE
@@ -231,6 +231,7 @@ class FormModal(QDialog):
             "default": "张三",
             "placeholder": "请输入姓名",
             "limit": lambda x: "不能为空" if len(x) == 0 else "",
+            "show_if": lambda: True,  # 可选，控制是否显示该字段
         },
         {
             "id": "tip",
@@ -243,6 +244,13 @@ class FormModal(QDialog):
             "labels": ["拆分成多excel", "拆分成多sheet"],
             "default": "拆分成多excel",
         },
+        {
+            "id": "checkbox",
+            "type": "checkbox",
+            "label": "检测到「序号」列，重置每个拆分结果的「序号」列",
+            "default": True,
+            "show_if": lambda: True,
+        },
     ]
 
     reply, result = FormModal.show_form(title=title, msg=msg, fields_config=fields_config)
@@ -250,6 +258,7 @@ class FormModal(QDialog):
         "name": "张三",  # 用户输入的内容
         "tip": "一行提示文本，仅用作提示",
         "download_format": "拆分成多excel",
+        "checkbox": True,
     }
     """
 
@@ -261,6 +270,7 @@ class FormModal(QDialog):
         self.inputs = {}  # 存储所有输入控件
         self.errors = {}  # 存储验证错误信息
         self.radio_groups = {}  # 存储单选按钮组
+        self.checkboxes = {}  # 存储复选框
         self.initUI()
 
     def initUI(self):
@@ -295,6 +305,11 @@ class FormModal(QDialog):
     def create_form_fields(self, layout):
         """根据配置生成表单字段"""
         for field in self.fields_config:
+            # 检查show_if条件，默认为显示
+            show_if = field.get("show_if", lambda: True)
+            if not show_if:
+                continue
+
             field_type = field.get("type")
             field_id = field.get("id")
             label = field.get("label", "")
@@ -338,6 +353,12 @@ class FormModal(QDialog):
                 layout.addRow(group_box)
                 self.radio_groups[field_id] = button_group
 
+            elif field_type == "checkbox":
+                checkbox = QCheckBox(label)
+                checkbox.setChecked(field.get("default", False))
+                layout.addRow(checkbox)
+                self.checkboxes[field_id] = checkbox
+
     def validate_field(self, field, value):
         """字段验证"""
         error_msg = field["limit"](value)
@@ -351,9 +372,12 @@ class FormModal(QDialog):
         valid = True
         for field in self.fields_config:
             if field.get("type") == "editable_text" and "limit" in field:
-                value = self.inputs[field["id"]].text()
-                if not self.validate_field(field, value):
-                    valid = False
+                # 只验证显示的字段
+                show_if = field.get("show_if", lambda: True)
+                if show_if():
+                    value = self.inputs[field["id"]].text()
+                    if not self.validate_field(field, value):
+                        valid = False
         return valid
 
     def submit(self):
@@ -364,6 +388,11 @@ class FormModal(QDialog):
 
         self.result = {}
         for field in self.fields_config:
+            # 只处理显示的字段
+            show_if = field.get("show_if", lambda: True)
+            if not show_if():
+                continue
+
             field_id = field["id"]
             if field["type"] == "editable_text":
                 self.result[field_id] = self.inputs[field_id].text()
@@ -374,6 +403,8 @@ class FormModal(QDialog):
                 checked_button = button_group.checkedButton()
                 if checked_button:
                     self.result[field_id] = checked_button.text()
+            elif field["type"] == "checkbox":
+                self.result[field_id] = self.checkboxes[field_id].isChecked()
 
         self.accept()
 
@@ -383,7 +414,6 @@ class FormModal(QDialog):
         dialog = cls(title, msg, fields_config)
         reply = dialog.exec_()
         return (reply == QDialog.Accepted, dialog.result if reply == QDialog.Accepted else {})
-
 # 测试代码
 # from PyQt5.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
 # from PyQt5.QtGui import QMovie

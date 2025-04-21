@@ -6,7 +6,6 @@ import pandas as pd
 from openpyxl.reader.excel import load_workbook
 
 from yrx_project.scene.split_table.const import SCENE_TEMP_PATH
-from yrx_project.utils.excel_style import ExcelStyleValue
 from yrx_project.utils.file import copy_file
 
 TEMP_FILE_PATH = os.path.join(SCENE_TEMP_PATH, "split_table.xlsx")
@@ -50,12 +49,18 @@ def sheets2excels():
 class SplitTable:
 
     def __init__(self, path: str, sheet_name_or_index: typing.Union[str, int], row_num_for_column: int,
-                 raw_df: pd.DataFrame):
+                 raw_df: pd.DataFrame, reorder_dict: dict):
+        """
+        reorder_dict:
+            reorder
+                {"reorder_序号": True}  # 说明序号列需要被重置为1,2,3...
+        """
         self.path = path
         self.sheet_name_or_index = sheet_name_or_index
         self.row_num_for_column = int(row_num_for_column)
         self.raw_df = raw_df
         self.excel_obj = None
+        self.reorder_dict = reorder_dict  # 当有「序号」列时，用户选择的是否需要重新排序
 
         self.CUR_SHEET = sheet_name_or_index
 
@@ -68,6 +73,7 @@ class SplitTable:
         copy_file(self.path, temp_path)
 
         # 2. 生成 ExcelStyleValue, 删除其他sheet
+        from yrx_project.utils.excel_style import ExcelStyleValue
         self.excel_obj = ExcelStyleValue(temp_path, self.sheet_name_or_index, run_mute=True)
 
         all_sheets = self.excel_obj.get_sheets_name()
@@ -97,7 +103,9 @@ class SplitTable:
             condition &= (self.raw_df[col] == value)  # 逐步叠加筛选条件
 
         filtered_df = self.raw_df[condition]  # 筛选出符合条件的行
-
+        for column in filtered_df.columns:
+            if self.reorder_dict.get("reorder_" + column):
+                filtered_df[column] = range(1, len(filtered_df) + 1)  # 重新排序
         # 3. 将筛选出的行写入新 sheet
         start_row = self.row_num_for_column + 1  # 从指定行号的下一行开始写入
         for i, (_, row) in enumerate(filtered_df.iterrows()):

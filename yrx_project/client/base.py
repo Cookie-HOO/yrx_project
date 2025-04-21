@@ -169,6 +169,13 @@ class BaseWindow(QMainWindow):
             """
             fields_config = [
                 {
+                    "id": "checkbox",
+                    "type": "checkbox",
+                    "label": "检测到「序号」列，重置每个拆分结果的「序号」列",
+                    "default": True,
+                    "show_if": lambda : "序号" in raw_df.columns,
+                },
+                {
                     "id": "name",
                     "type": "editable_text",
                     "label": "请输入姓名：",

@@ -7,11 +7,11 @@ from yrx_project.scene.match_table.const import MATCH_OPTION, MAKEUP_MAIN_COL, A
 from yrx_project.utils.string_util import remove_by_ignore_policy
 
 STR_EQUAL = "相等"
-STR_CONTAINED = "被主表包含"
+STR_CONTAINED = "任意包含"
 
 MATCH_FUNC_MAP = {
     STR_EQUAL: lambda m, h: m == h,
-    STR_CONTAINED: lambda m, h: h in m,
+    STR_CONTAINED: lambda m, h: h in m or m in h,
 }
 
 def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match_info=False) -> (pd.DataFrame, dict, dict):
