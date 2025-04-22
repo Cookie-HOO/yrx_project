@@ -10,7 +10,7 @@ from pandas.core.groupby import DataFrameGroupBy
 from yrx_project.client.base import WindowWithMainWorkerBarely, BaseWorker, set_error_wrapper
 from yrx_project.client.const import UI_PATH
 from yrx_project.client.utils.table_widget import TableWidgetWrapper
-from yrx_project.scene.split_table.const import SCENE_TEMP_PATH
+from yrx_project.scene.split_table.const import SCENE_TEMP_PATH, REORDER_COLS
 from yrx_project.scene.split_table.main import SplitTable, sheets2excels, TEMP_FILE_PATH
 from yrx_project.utils.df_util import read_excel_file_with_multiprocessing
 from yrx_project.utils.file import get_file_name_without_extension, open_file_or_folder, copy_file
@@ -150,6 +150,7 @@ class Worker(BaseWorker):
             group_values = self.get_param("group_values")
             raw_df = self.get_param("raw_df")
             table_wrapper = self.get_param("table_wrapper")
+            user_input_result = self.get_param("user_input_result")  # 用户拆分表单的结果
             path = table_wrapper.get_cell_value(0, 4)
             sheet_name = table_wrapper.get_cell_value(0, 1)  # 工作表
             row_num_for_column = table_wrapper.get_cell_value(0, 2)  # 列所在行
@@ -157,7 +158,7 @@ class Worker(BaseWorker):
             names = self.get_param("names")
             total_task = len(names)
 
-            split_table = SplitTable(path, sheet_name, row_num_for_column, raw_df)
+            split_table = SplitTable(path, sheet_name, row_num_for_column, raw_df, user_input_result)
             split_table.init_env()
 
             for index, (name, group) in enumerate(zip(names, group_values)):
@@ -330,28 +331,33 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
     </body>
     </html>"""
     release_info_text = """
-    v1.0.7: 
-    实现基础版本的表格拆分功能
-    """
+v1.0.7: 
+实现基础版本的表格拆分功能
+
+v1.0.8
+1. 当待拆分表中出现任意预置列（目前预置列只有「序号」）
+    可由用户选择是否对预置列重排序，默认需要重排序
+2. [修复] 重跑任务时，结果表的提示icon不清空的问题
+"""
 
     # 第一步：上传文件的帮助信息
     step1_help_info_text = """
-    1. 可点击按钮或拖拽文件到表格中
-    2. 调整「标题所在行」后点击「预览」使得标题行在预览的表格的最上方
-    """
+1. 可点击按钮或拖拽文件到表格中
+2. 调整「标题所在行」后点击「预览」使得标题行在预览的表格的最上方
+"""
     # 第二步：添加拆分列的帮助信息
     step2_help_info_text = """
-    1. 点击 + 从下拉列表中选择拆分列
-    2. 可以添加多列，拆分多列的效果，在场景说明中有例子
-    3. 点击删除，删除不需要的列
-    4. 修改了第一步上传的文件，需要删除所有列，后重新添加
-    """
+1. 点击 + 从下拉列表中选择拆分列
+2. 可以添加多列，拆分多列的效果，在场景说明中有例子
+3. 点击删除，删除不需要的列
+4. 修改了第一步上传的文件，需要删除所有列，后重新添加
+"""
     # 第三步：执行与下载的帮助信息
     step3_help_info_text = """
-    1. 可选拆分成多个excel还是多个sheet
-    2. 点击执行，可以在弹窗中修改文件名/sheet名
-    3. 如果拆分成多个文件，下载是一个压缩包，否则是单个文件
-    """
+1. 可选拆分成多个excel还是多个sheet
+2. 点击执行，可以在弹窗中修改文件名/sheet名
+3. 如果拆分成多个文件，下载是一个压缩包，否则是单个文件
+"""
 
     def __init__(self):
         super(MyTableSplitClient, self).__init__()
@@ -597,11 +603,13 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
 
         # 个数
         need_split, result = self.modal(level="form", msg=f"确定要拆分吗，即将拆分 {split_num} 个？", fields_config = [
-            {
-                "id": "tip",
-                "type": "tip",
-                "label": f"",
-            },
+            *[{
+                "id": f"reorder_{reorder_col}",
+                "type": "checkbox",
+                "label": f"在拆分结果中，重排序「{reorder_col}」列",
+                "default": True,
+                "show_if": reorder_col in raw_df.columns,
+            } for reorder_col in REORDER_COLS],
             {
                 "id": "split_name_format",
                 "type": "editable_text",
@@ -614,6 +622,7 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         if not need_split:
             return
         self.done = False  # 开始进入计算周期
+        self.result_table_wrapper.clear_vertical_header()
         split_name_format = result.get("split_name_format")
         # 获取分组统计结果
         size_series = grouped_obj.size().reset_index(name='行数')
@@ -652,6 +661,7 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
             "grouped_obj": grouped_obj,
             "group_values": groups,
             "raw_df": raw_df,
+            "user_input_result": result,
             "names": df["拆分文件/sheet"].to_list(),
         }
         self.worker.add_params(params).start()
@@ -691,8 +701,9 @@ class MyTableSplitClient(WindowWithMainWorkerBarely):
         split_num = after_run_result.get("split_num")
         self.set_status_text(status_msg)
         self.done = True
-
-        self.result_detail_text.setText(f"✅执行耗时：{duration}秒；共拆分：{split_num}个")
+        msg = f"✅执行耗时：{duration}秒；共拆分：{split_num}个"
+        self.result_detail_text.setText(msg)
+        self.modal(level="info", msg=msg + "\n可以通过「下载结果」按钮下载拆分结果")
         pass
 
     @set_error_wrapper
