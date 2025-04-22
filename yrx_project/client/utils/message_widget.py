@@ -389,8 +389,8 @@ class FormModal(QDialog):
         self.result = {}
         for field in self.fields_config:
             # 只处理显示的字段
-            show_if = field.get("show_if", lambda: True)
-            if not show_if():
+            show_if: bool = field.get("show_if", lambda: True)
+            if not show_if:
                 continue
 
             field_id = field["id"]

@@ -138,7 +138,11 @@ def match_table(main_df, match_cols_and_df: typing.List[dict], add_overall_match
                     return match_tip
                 return unmatch_tip
             return no_content_tip
-        main_df["%匹配行索引%"] = striped_main_col.apply(lambda row: [index for index, v in striped_match_col.items() if match_func(row, v)] if not pd.isnull(row) and row else None)
+
+        # 插入新列到第一列位置
+        main_for_match = striped_main_col.apply(lambda row: [index for index, v in striped_match_col.items() if match_func(row, v)] if not pd.isnull(row) and row else None)
+        # 放到第一列的位置，因为后面需要根据列名取列的索引，放到第一个，可以将后面取的列索引都 -1
+        main_df.insert(0, "%匹配行索引%", main_for_match)
         main_df[f"{match_id}%%匹配附加信息（文字）"] = main_df["%匹配行索引%"].apply(match_text)
         main_df[f"{match_id}%%匹配附加信息（行数）"] = main_df["%匹配行索引%"].apply(len)
         match_extra_cols_index_list = [main_df.columns.get_loc(i) -1 for i in [f"{match_id}%%匹配附加信息（文字）", f"{match_id}%%匹配附加信息（行数）"]]

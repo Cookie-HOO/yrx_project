@@ -335,7 +335,9 @@ v1.0.7:
 实现基础版本的表格拆分功能
 
 v1.0.8
-可由用户选择是否对预置列重排序（目前预置列只有「序号」）
+1. 当待拆分表中出现任意预置列（目前预置列只有「序号」）
+    可由用户选择是否对预置列重排序，默认需要重排序
+2. [修复] 重跑任务时，结果表的提示icon不清空的问题
 """
 
     # 第一步：上传文件的帮助信息
@@ -620,6 +622,7 @@ v1.0.8
         if not need_split:
             return
         self.done = False  # 开始进入计算周期
+        self.result_table_wrapper.clear_vertical_header()
         split_name_format = result.get("split_name_format")
         # 获取分组统计结果
         size_series = grouped_obj.size().reset_index(name='行数')

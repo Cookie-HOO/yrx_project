@@ -13,7 +13,7 @@ class MyClient(QMainWindow):
     def __init__(self):
         super(MyClient, self).__init__()
         uic.loadUi(UI_PATH.format(file="main.ui"), self)  # 加载.ui文件
-        self.setWindowTitle(f"{WINDOW_TITLE}_v1.0.7")
+        self.setWindowTitle(f"{WINDOW_TITLE}_v1.0.8")
         self.setWindowIcon(QIcon(STATIC_FILE_PATH.format(file="app.ico")))
         self.main_tab.addTab(MyTableMatchClient(), '多表匹配')
         self.main_tab.addTab(MyTableSplitClient(), '单表拆分')

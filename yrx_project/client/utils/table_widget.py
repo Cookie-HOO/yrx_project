@@ -338,6 +338,10 @@ class TableWidgetWrapper:
             if widget2:
                 print(f"Widget2 valid: {widget2.isWidgetType()}")
 
+    def clear_vertical_header(self):
+        headers = ["" for _ in range(self.row_length())]
+        self.table_widget.setVerticalHeaderLabels(headers)
+
     def set_vertical_header(self, headers):
         assert len(headers) == self.row_length()
         self.table_widget.setVerticalHeaderLabels(headers)
