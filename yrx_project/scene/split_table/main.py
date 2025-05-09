@@ -46,8 +46,8 @@ def sheets2excels():
     except Exception as e:
         return False, f"错误: {str(e)}"
 
-class SplitTable:
 
+class SplitTable:
     def __init__(self, path: str, sheet_name_or_index: typing.Union[str, int], row_num_for_column: int,
                  raw_df: pd.DataFrame, reorder_dict: dict):
         """
@@ -63,6 +63,7 @@ class SplitTable:
         self.reorder_dict = reorder_dict  # 当有「序号」列时，用户选择的是否需要重新排序
 
         self.CUR_SHEET = sheet_name_or_index
+        self.col_widths = None
 
     def init_env(self):
         # 1. 初始化路径, 拷贝临时文件
@@ -81,6 +82,7 @@ class SplitTable:
         self.excel_obj.batch_delete_sheet(sheets_to_delete)
 
         # 3. 删除当前sheet列名以下的行
+        self.col_widths = self.excel_obj.get_cols_width()
         self.excel_obj.batch_delete_row(self.row_num_for_column + 1, 1_000_000)  # 删除从指定行号+1开始的所有行
 
     def copy_rows_to(self, name, group_value):
@@ -112,6 +114,7 @@ class SplitTable:
             values = row.tolist()  # 获取行数据
             self.excel_obj.set_row(start_row + i, values)  # 写入到 Excel 中
 
+        self.excel_obj.set_cols_width(self.col_widths)  # 设置列宽
         # 4. 切换回主 sheet
         self.excel_obj.switch_sheet(self.CUR_SHEET)  # 复位
 

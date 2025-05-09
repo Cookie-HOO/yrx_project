@@ -338,6 +338,9 @@ v1.0.8
 1. 当待拆分表中出现任意预置列（目前预置列只有「序号」）
     可由用户选择是否对预置列重排序，默认需要重排序
 2. [修复] 重跑任务时，结果表的提示icon不清空的问题
+
+v1.0.9
+1. 拆分后的表，列宽和原文件一致
 """
 
     # 第一步：上传文件的帮助信息
@@ -665,7 +668,7 @@ v1.0.8
             "names": df["拆分文件/sheet"].to_list(),
         }
         self.worker.add_params(params).start()
-        # self.tip_loading.set_titles(["表拆分.", "表拆分..", "表拆分..."]).show()
+        self.tip_loading.set_titles(["表拆分.", "表拆分..", "表拆分..."]).show()
 
     @set_error_wrapper
     def custom_before_split_each_table(self, before_split_table_result):
@@ -701,6 +704,7 @@ v1.0.8
         split_num = after_run_result.get("split_num")
         self.set_status_text(status_msg)
         self.done = True
+        self.tip_loading.hide()
         msg = f"✅执行耗时：{duration}秒；共拆分：{split_num}个"
         self.result_detail_text.setText(msg)
         self.modal(level="info", msg=msg + "\n可以通过「下载结果」按钮下载拆分结果")
