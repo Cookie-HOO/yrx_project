@@ -216,3 +216,12 @@ class ExcelStyleValue:
         if num > 26:
             raise ValueError("more than 26")
         return chars[num-1]
+
+    def get_cols_width(self) -> typing.List[int]:
+        last_col = self.sht.range('A1').end('right').column
+        return [self.sht.range((1, col)).column_width for col in range(1, last_col + 1)]
+
+    def set_cols_width(self, width_list: typing.List[int]):
+        for col, width in enumerate(width_list, start=1):
+            if width is not None:
+                self.sht.range((1, col)).column_width = width
